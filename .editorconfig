@@ -6,11 +6,8 @@ end_of_line = lf
 insert_final_newline = true
 charset = utf-8
 
-# Cpp files
-[*.{h,cpp}]
-indent_style = tab
-
-[Makefile]
-indent_style = tab
-
+# rust files
+[*.rs]
+indent_style = space
+indent_size = 4
 
