@@ -44,9 +44,9 @@ pub struct OperatorTable {
 
 
 impl OperatorTable {
-    // Returns None if there is any duplicate symbol
+    // panics if there is any duplicate symbol
     // TODO: Check that constants and unary symbols don't overlap
-    pub fn new(unary: Vec<UnaryOp>, binary: Vec<BinaryOp>, consts: Vec<ConstantOp>) -> Option<OperatorTable> {
+    pub fn new(unary: Vec<UnaryOp>, binary: Vec<BinaryOp>, consts: Vec<ConstantOp>) -> OperatorTable {
         let mut unary_table = HashMap::new();
         let mut binary_table = HashMap::new();
         let mut const_table = HashMap::new();
@@ -54,29 +54,29 @@ impl OperatorTable {
         for op in unary.into_iter() {
             if let Some(_) = unary_table.insert(op.symbol, op) {
                 // Duplicate symbols are not allowed
-                return None
+                panic!("Duplicate unary operator symbol")
             }
         }
 
         for op in binary.into_iter() {
             if let Some(_) = binary_table.insert(op.symbol, op) {
                 // Duplicate symbols are not allowed
-                return None
+                panic!("Duplicate binary operator symbol")
             }
         }
 
         for op in consts.into_iter() {
             if let Some(_) = const_table.insert(op.symbol, op) {
                 // Duplicate symbols are not allowed
-                return None
+                panic!("Duplicate constant symbol")
             }
         }
 
-        Some(OperatorTable {
+        OperatorTable {
             unary_ops: unary_table,
             binary_ops: binary_table,
             const_ops: const_table,
-        })
+        }
     }
 
     pub fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp> {

@@ -80,7 +80,7 @@ fn main() -> io::Result<()> {
             semantics: std::f64::consts::E,
         },
     ];
-    let table = operator_descr::OperatorTable::new(unary_ops, binary_ops, consts).unwrap();
+    let table = operator_descr::OperatorTable::new(unary_ops, binary_ops, consts);
 
     let mut input = String::new();
 
