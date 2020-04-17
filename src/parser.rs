@@ -118,7 +118,7 @@ impl<'s> Parser<'s> {
     pub fn new(input: &'s str, table: &'s OperatorTable) -> Parser<'s> {
 
         let mut res = Parser {
-            tokenizer: Tokenizer::new(input, &table),
+            tokenizer: Tokenizer::new(input, table),
             table: table,
             look_ahead: Token::Eof,
         };
