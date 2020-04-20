@@ -3,6 +3,9 @@
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
   </head>
   <body>
+    <label for="function">Input function:</label>
+    <input type="text" name="function" value="sin(x)"/>
+
     <canvas id="canvas" height="720" width="1280" />
     <!-- Note the usage of `type=module` here as this is an ES6 module -->
     <script type="module">
@@ -31,6 +34,8 @@
         // modes
         await init('./pkg/web_bg.wasm');
       }
+
+
 
       run();
     </script>
