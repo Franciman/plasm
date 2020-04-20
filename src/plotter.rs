@@ -1,4 +1,7 @@
 use three_d::*;
+use crate::operator_descr::default_operator_table;
+use crate::parser::Parser;
+use three_d::Program;
 
 pub struct Plotter {
     position_buffer: VertexBuffer,
@@ -6,13 +9,21 @@ pub struct Plotter {
 }
 
 impl Plotter {
-    pub fn new(gl: &Gl) -> Plotter{
-        let positions: Vec<f32> = vec![
-            0.5, -0.5, 0.0, // bottom right
-            -0.5, -0.5, 0.0,// bottom left
-            0.0,  0.5, 0.0 // top
-        ];
-        let position_buffer = VertexBuffer::new_with_static_f32(&gl, &positions).unwrap();
+    pub fn new(gl: &Gl, input: &str) -> Plotter{
+
+        let table = default_operator_table();   
+        let expr = Parser::new(input, &table).parse().unwrap();
+        let mut points: Vec<f32> = Vec::new();
+
+        for i in 0..2000 {
+            let x: f32 = (i as f32 - 1000.0) / 100.0;
+            let y = expr.eval(x);
+            points.push(x/5.0);
+            points.push(y/2.0);
+            points.push(0.0);
+        }
+
+        let position_buffer = VertexBuffer::new_with_static_f32(&gl, &points).unwrap();
 
         let program = Program::from_source(gl,
             include_str!("../assets/shaders/color.vert"),
@@ -31,6 +42,6 @@ impl Plotter {
         let world_view_projection = camera.get_projection() * camera.get_view();
         self.program.add_uniform_mat4("worldViewProjectionMatrix", &world_view_projection).unwrap();
 
-        self.program.draw_arrays(3);
+        self.program.draw_arrays_line_strip(2000);
     }
 }
