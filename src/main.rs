@@ -1,103 +1,58 @@
-mod expression;
+mod plotter;
 mod operator_descr;
 mod parser;
+mod expression;
+use three_d::*;
 
-use std::io::{self, Write};
+fn main() {
+    let get_input = || {String::from("sin(x*10)")};
+    start_main(get_input);
+}
 
-fn main() -> io::Result<()> {
-    let unary_ops = vec![
-        operator_descr::UnaryOp {
-            symbol: "ln",
-            semantics: |x| x.ln(),
-        },
-        operator_descr::UnaryOp {
-            symbol: "log",
-            semantics: |x| x.log(10.0),
-        },
-        operator_descr::UnaryOp {
-            symbol: "sin",
-            semantics: |x| x.sin(),
-        },
-        operator_descr::UnaryOp {
-            symbol: "cos",
-            semantics: |x| x.cos(),
-        },
-        operator_descr::UnaryOp {
-            symbol: "tan",
-            semantics: |x| x.tan(),
-        },
-        operator_descr::UnaryOp {
-            symbol: "sqrt",
-            semantics: |x| x.sqrt(),
-        },
-        operator_descr::UnaryOp {
-            symbol: "-",
-            semantics: |x| (-x),
-        },
-    ];
+fn start_main<F: 'static>(get_input: F) where
+    F: Fn() -> String {
 
-    let binary_ops = vec![
-        operator_descr::BinaryOp {
-            symbol: "+",
-            semantics: |x, y| x+y,
-            assoc: operator_descr::Assoc::Left,
-            prec: 1,
-        },
-        operator_descr::BinaryOp {
-            symbol: "-",
-            semantics: |x, y| x-y,
-            assoc: operator_descr::Assoc::Left,
-            prec: 1,
+    let mut window = Window::new_default("Plasm").unwrap();
+    let (screen_width, screen_height) = window.framebuffer_size();
 
-        },
-        operator_descr::BinaryOp {
-            symbol: "*",
-            semantics: |x, y| x*y,
-            assoc: operator_descr::Assoc::Left,
-            prec: 2,
-        },
-        operator_descr::BinaryOp {
-            symbol: "/",
-            semantics: |x, y| x/y,
-            assoc: operator_descr::Assoc::Left,
-            prec: 2,
-        },
-        operator_descr::BinaryOp {
-            symbol: "^",
-            semantics: |x, y| x.powf(y),
-            assoc: operator_descr::Assoc::Left,
-            prec: 3,
-        },
-    ];
+    let gl = window.gl();
 
-    let consts = vec![
-        operator_descr::ConstantOp {
-            symbol: "pi",
-            semantics: std::f64::consts::PI,
-        },
-        operator_descr::ConstantOp {
-            symbol: "e",
-            semantics: std::f64::consts::E,
-        },
-    ];
-    let table = operator_descr::OperatorTable::new(unary_ops, binary_ops, consts);
+    let mut plotter = plotter::Plotter::new(&gl, "sin(x)");
 
-    let mut input = String::new();
-
-    loop {
-        input.clear();
-        print!("f(x,y) = ");
-        io::stdout().flush()?;
-        io::stdin().read_line(&mut input)?;
-
-        if input == "quit\n" {
-            break;
+    // main loop
+    let mut moving = false;
+    let mut old_input = String::from("sin(x)");
+    window.render_loop(move |frame_input|
+    {
+        let input = get_input();
+        if input != old_input {
+            plotter.set_expression(&gl, input.as_str());
+            old_input = input;
         }
 
+        for event in frame_input.events.iter() {
+            match event {
+                Event::MouseClick {state, button, ..} => {
+                    moving = *button == MouseButton::Left && *state == State::Pressed;
+                },
+                Event::MouseMotion {delta} => {
+                    if moving {
+                        let delta_x = -delta.0 as f32 / 200.0;
+                        let delta_y = delta.1 as f32 / 200.0;
+                        // todo move plotter
+                    }
+                },
+                Event::MouseWheel {delta} => {
+                    plotter.zoom(&gl, *delta as f32);
+                },
+                _ => ()
+            }
+        }
 
-        let expr = parser::Parser::new(input.as_str(), &table).parse().unwrap();
-        let res = expr.eval((10.0, 10.0));
-        println!("f(10, 10) = {}", res);
-    }
-    Ok(())
+        Screen::write(&gl, 0, 0, screen_width, screen_height, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
+
+            plotter.plot();
+
+        }).unwrap();
+    }).unwrap();
 }

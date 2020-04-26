@@ -2,6 +2,86 @@ use std::collections::HashMap;
 
 use crate::expression::Number;
 
+pub fn default_operator_table() -> OperatorTable {
+    let unary_ops = vec![
+        UnaryOp {
+            symbol: "ln",
+            semantics: |x| x.ln(),
+        },
+        UnaryOp {
+            symbol: "log",
+            semantics: |x| x.log(10.0),
+        },
+        UnaryOp {
+            symbol: "sin",
+            semantics: |x| x.sin(),
+        },
+        UnaryOp {
+            symbol: "cos",
+            semantics: |x| x.cos(),
+        },
+        UnaryOp {
+            symbol: "tan",
+            semantics: |x| x.tan(),
+        },
+        UnaryOp {
+            symbol: "sqrt",
+            semantics: |x| x.sqrt(),
+        },
+        UnaryOp {
+            symbol: "-",
+            semantics: |x| (-x),
+        },
+    ];
+
+    let binary_ops = vec![
+        BinaryOp {
+            symbol: "+",
+            semantics: |x, y| x+y,
+            assoc: Assoc::Left,
+            prec: 1,
+        },
+        BinaryOp {
+            symbol: "-",
+            semantics: |x, y| x-y,
+            assoc: Assoc::Left,
+            prec: 1,
+
+        },
+        BinaryOp {
+            symbol: "*",
+            semantics: |x, y| x*y,
+            assoc: Assoc::Left,
+            prec: 2,
+        },
+        BinaryOp {
+            symbol: "/",
+            semantics: |x, y| x/y,
+            assoc: Assoc::Left,
+            prec: 2,
+        },
+        BinaryOp {
+            symbol: "^",
+            semantics: |x, y| x.powf(y),
+            assoc: Assoc::Left,
+            prec: 3,
+        },
+    ];
+
+    let consts = vec![
+        ConstantOp {
+            symbol: "pi",
+            semantics: std::f64::consts::PI as f32,
+        },
+        ConstantOp {
+            symbol: "e",
+            semantics: std::f64::consts::E as f32,
+        },
+    ];
+
+    OperatorTable::new(unary_ops, binary_ops, consts)
+}
+
 // Associativity of a binary operator
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Assoc {

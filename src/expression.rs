@@ -1,6 +1,6 @@
 // Here we define the semantic of an expression
-pub type Number = f64;
-pub type InputSpace = (f64, f64);
+pub type Number = f32;
+pub type InputSpace = f32;
 
 pub enum Operation {
     BinaryOperation(fn (Number, Number) -> Number),
