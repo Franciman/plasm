@@ -8,5 +8,5 @@ out vec3 col;
 void main()
 {
   col = color;
-  gl_Position = worldViewProjectionMatrix * vec4(position, 1.0);
+  gl_Position = vec4(position, 1.0);
 }
