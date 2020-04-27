@@ -87,6 +87,15 @@ impl Plotter {
     }
 }
 
+impl Camera { 
+    // project a point to screen coordinate [-1,1]
+    fn to_screen_coordinate(&self, point: (f32, f32)) -> (f32, f32) {
+        let x_proj = 2.0*(point.0 - self.position.0)/self.size;
+        let y_proj = 2.0*(point.1 - self.position.1)/self.size;
+        (x_proj, y_proj)
+    }
+}
+
 
 fn generate_points(expression: &Expression, count: u32, camera: &Camera) -> Vec<f32> {
     
@@ -101,13 +110,10 @@ fn generate_points(expression: &Expression, count: u32, camera: &Camera) -> Vec<
         let count = count as f32;
         let x = x_start + i * camera.size/count;
         let y = expression.eval(x);
+        let (x_screen, y_screen) = camera.to_screen_coordinate((x, y));
 
-        // project to screen coordinate [-1,1]
-        let x_plot = 2.0*(x - camera.position.0)/camera.size;
-        let y_plot = 2.0*(y - camera.position.1)/camera.size;
-
-        points.push(x_plot);
-        points.push(y_plot);
+        points.push(x_screen);
+        points.push(y_screen);
         points.push(0.0);
     }
 
@@ -115,9 +121,7 @@ fn generate_points(expression: &Expression, count: u32, camera: &Camera) -> Vec<
 }
 
 fn generate_axis_lines(camera: &Camera) -> Vec<f32> {
-    // project origin coordinate into screen coordinate
-    let x_zero = -2.0*camera.position.0/camera.size;
-    let y_zero = -2.0*camera.position.1/camera.size;
+    let (x_zero, y_zero) = camera.to_screen_coordinate((0.0, 0.0));
 
     vec![-1.0, y_zero, 0.0,
         1.0, y_zero, 0.0,
