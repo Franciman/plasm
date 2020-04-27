@@ -3,9 +3,6 @@ use crate::operator_descr::{OperatorTable, default_operator_table};
 use crate::parser::Parser;
 use crate::expression::Expression;
 use three_d::Program;
-use log::info;
-
-const SAMPLES: u32 = 2000;
 
 pub struct Plotter {
     position_buffer: VertexBuffer,
@@ -13,22 +10,28 @@ pub struct Plotter {
     program: Program,
     operator_table: OperatorTable,
     expression: Expression,
-    zoom: f32
+    camera: Camera,
+    screen_size: (u32, u32)
+}
+
+struct Camera {
+    position: (f32, f32),
+    size: f32
 }
 
 impl Plotter {
-    pub fn new(gl: &Gl, input: &str) -> Plotter{
+    pub fn new(gl: &Gl, input: &str, screen_size: (u32, u32)) -> Plotter{
 
         let program = Program::from_source(gl,
-            include_str!("../assets/shaders/color.vert"),
+            include_str!("../assets/shaders/2d.vert"),
             include_str!("../assets/shaders/color.frag")).unwrap();
 
         let operator_table = default_operator_table();
         let expression = Parser::new(input, &operator_table).parse().unwrap();
 
-        let zoom = 10.0;
-        let points = generate_points(&expression, SAMPLES, zoom);
-        let axis_points = generate_axis_lines();
+        let camera = Camera {position: (0.0, 0.0), size: 10.0};
+        let points = generate_points(&expression, screen_size.0, &camera);
+        let axis_points = generate_axis_lines(&camera);
 
         let position_buffer = VertexBuffer::new_with_static_f32(&gl, &points).unwrap();
         let axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
@@ -39,7 +42,8 @@ impl Plotter {
             program,
             operator_table,
             expression,
-            zoom: zoom
+            camera,
+            screen_size
         }
     }
 
@@ -53,23 +57,30 @@ impl Plotter {
     }
 
     pub fn zoom(&mut self, gl: &Gl, delta: f32) {
-        self.zoom += delta;
+        self.camera.size *= (1.1 as f32).powf(delta);
+        self.update_view(gl);
+    }
+
+    pub fn translate(&mut self, gl: &Gl, delta_x: f32, delta_y: f32) {
+        self.camera.position.0 += delta_x * self.camera.size / self.screen_size.0 as f32;
+        self.camera.position.1 += delta_y * self.camera.size / self.screen_size.1 as f32;
         self.update_view(gl);
     }
 
     pub fn plot(&self) {
         self.program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
         self.program.add_uniform_vec3("color", &vec3(0.3, 0.3, 0.3)).unwrap();
-        self.program.draw_arrays_line_strip(SAMPLES);
+        self.program.draw_arrays_mode(self.screen_size.0, consts::LINE_STRIP);
 
+        // draw axis
         self.program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
         self.program.add_uniform_vec3("color", &vec3(0.5, 0.5, 0.5)).unwrap();
-        self.program.draw_arrays_line_strip(4);
+        self.program.draw_arrays_mode(4, consts::LINES);
     }
 
     fn update_view(&mut self, gl: &Gl) {
-        let points = generate_points(&self.expression, SAMPLES, self.zoom);
-        let axis_points = generate_axis_lines();
+        let points = generate_points(&self.expression, self.screen_size.0, &self.camera);
+        let axis_points = generate_axis_lines(&self.camera);
 
         self.position_buffer = VertexBuffer::new_with_static_f32(&gl, &points).unwrap();
         self.axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
@@ -77,21 +88,23 @@ impl Plotter {
 }
 
 
-fn generate_points(expression: &Expression, count: u32, range: f32) -> Vec<f32> {
+fn generate_points(expression: &Expression, count: u32, camera: &Camera) -> Vec<f32> {
     
     let mut points: Vec<f32> = Vec::with_capacity((count*3) as usize);
 
+    let x_start = camera.position.0 - camera.size/2.0;
+
     for i in 0..count {
-        // [a,b] is our camera range
-        let range = (1.1 as f32).powf(range);
-        let a = -range as f32;
-        let b = range as f32;
+
+        // divide camera width into count segments and evaluate y
         let i = i as f32;
         let count = count as f32;
-        let x: f32 = a + i * (b-a)/count;
+        let x = x_start + i * camera.size/count;
         let y = expression.eval(x);
-        let x_plot = (2.0*x-b-a)/(b-a);
-        let y_plot = (2.0*y-b-a)/(b-a);
+
+        // project to screen coordinate [-1,1]
+        let x_plot = 2.0*(x - camera.position.0)/camera.size;
+        let y_plot = 2.0*(y - camera.position.1)/camera.size;
 
         points.push(x_plot);
         points.push(y_plot);
@@ -101,9 +114,13 @@ fn generate_points(expression: &Expression, count: u32, range: f32) -> Vec<f32> 
     points
 }
 
-fn generate_axis_lines() -> Vec<f32> {
-    vec![-100.0, 0.0, 0.0,
-        100.0, 0.0, 0.0,
-        0.0, -100.0, 0.0,
-        0.0, 100.0, 0.0]
+fn generate_axis_lines(camera: &Camera) -> Vec<f32> {
+    // project origin coordinate into screen coordinate
+    let x_zero = -2.0*camera.position.0/camera.size;
+    let y_zero = -2.0*camera.position.1/camera.size;
+
+    vec![-1.0, y_zero, 0.0,
+        1.0, y_zero, 0.0,
+        x_zero, -1.0, 0.0,
+        x_zero, 1.0, 0.0]
 }

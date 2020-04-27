@@ -1,5 +1,3 @@
-uniform mat4 worldViewProjectionMatrix;
-
 in vec3 position;
 uniform vec3 color;
 

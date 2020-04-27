@@ -17,11 +17,12 @@ fn start_main<F: 'static>(get_input: F) where
 
     let gl = window.gl();
 
-    let mut plotter = plotter::Plotter::new(&gl, "sin(x)");
+    let input = get_input();
+    let mut plotter = plotter::Plotter::new(&gl, input.as_str(), (screen_width as u32, screen_height as u32));
 
     // main loop
     let mut moving = false;
-    let mut old_input = String::from("sin(x)");
+    let mut old_input = input;
     window.render_loop(move |frame_input|
     {
         let input = get_input();
@@ -37,9 +38,9 @@ fn start_main<F: 'static>(get_input: F) where
                 },
                 Event::MouseMotion {delta} => {
                     if moving {
-                        let delta_x = -delta.0 as f32 / 200.0;
-                        let delta_y = delta.1 as f32 / 200.0;
-                        // todo move plotter
+                        let delta_x = -delta.0 as f32;
+                        let delta_y = delta.1 as f32;
+                        plotter.translate(&gl, delta_x, delta_y);
                     }
                 },
                 Event::MouseWheel {delta} => {
