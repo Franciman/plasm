@@ -198,12 +198,12 @@ impl<'s> Parser<'s> {
             },
             Token::XVar => {
                 self.next_token();
-                Ok(vec![Operation::Variable(|input| input)])
+                Ok(vec![Operation::Variable(|input| input.0)])
             },
-            // Token::YVar => {
-            //     self.next_token();
-            //     Ok(vec![Operation::Variable(|input| input.1)])
-            // },
+            Token::YVar => {
+                self.next_token();
+                Ok(vec![Operation::Variable(|input| input.1)])
+            },
             Token::LeftParen => {
                 self.next_token();
                 let sub_expr = self.parse_expr(0)?;

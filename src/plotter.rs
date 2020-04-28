@@ -109,7 +109,7 @@ fn generate_points(expression: &Expression, count: u32, camera: &Camera) -> Vec<
         let i = i as f32;
         let count = count as f32;
         let x = x_start + i * camera.size/count;
-        let y = expression.eval(x);
+        let y = expression.eval((x, 0.0)); // y=0 as there is no y value
         let (x_screen, y_screen) = camera.to_screen_coordinate((x, y));
 
         points.push(x_screen);

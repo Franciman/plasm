@@ -71,11 +71,11 @@ pub fn default_operator_table() -> OperatorTable {
     let consts = vec![
         ConstantOp {
             symbol: "pi",
-            semantics: std::f64::consts::PI as f32,
+            semantics: std::f32::consts::PI,
         },
         ConstantOp {
             symbol: "e",
-            semantics: std::f64::consts::E as f32,
+            semantics: std::f32::consts::E,
         },
     ];
 

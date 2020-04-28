@@ -1,11 +1,11 @@
-mod plotter;
+mod plotter3d;
 mod operator_descr;
 mod parser;
 mod expression;
 use three_d::*;
 
 fn main() {
-    let get_input = || {String::from("sin(x*10)")};
+    let get_input = || {String::from("x^2/5 + y^2/5")};
     start_main(get_input);
 }
 
@@ -18,7 +18,7 @@ fn start_main<F: 'static>(get_input: F) where
     let gl = window.gl();
 
     let input = get_input();
-    let mut plotter = plotter::Plotter::new(&gl, input.as_str(), (screen_width as u32, screen_height as u32));
+    let mut plotter = plotter3d::Plotter3d::new(&gl, input.as_str(), (screen_width as u32, screen_height as u32));
 
     // main loop
     let mut moving = false;
@@ -52,7 +52,7 @@ fn start_main<F: 'static>(get_input: F) where
 
         Screen::write(&gl, 0, 0, screen_width, screen_height, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
 
-            plotter.plot();
+            plotter.draw();
 
         }).unwrap();
     }).unwrap();
