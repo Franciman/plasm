@@ -58,9 +58,12 @@ impl Plotter3d {
         self.update_view(gl);
     }
 
-    pub fn zoom(&mut self, gl: &Gl, delta: f32) {
-        self.camera.size *= (1.1 as f32).powf(delta);
-        self.update_view(gl);
+    pub fn zoom(&mut self, delta: f32) {
+        self.plot.projection.zoom(delta as f32);
+    }
+
+    pub fn rotate(&mut self, delta_x: f32, delta_y: f32) {
+        self.plot.projection.rotate(delta_x, delta_y);
     }
 
     pub fn translate(&mut self, gl: &Gl, delta_x: f32, delta_y: f32) {
