@@ -1,9 +1,9 @@
 uniform mat4 worldViewProjectionMatrix;
 
 in vec3 position;
-uniform vec3 color;
+uniform vec4 color;
 
-out vec3 col;
+out vec4 col;
 
 void main()
 {

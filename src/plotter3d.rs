@@ -13,6 +13,7 @@ pub struct Plotter3d {
     expression: Expression,
     camera: Camera,
     screen_size: (u32, u32),
+    projection: three_d::Camera
 }
 
 struct Camera {
@@ -24,7 +25,6 @@ struct Plot {
     position_buffer: VertexBuffer,
     position_buffer_size: u32,
     axis_buffer: VertexBuffer,
-    projection: three_d::Camera
 }
 
 impl Plotter3d {
@@ -37,7 +37,9 @@ impl Plotter3d {
         let operator_table = default_operator_table();
         let expression = Parser::new(input, &operator_table).parse().unwrap();
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
-        let plot = Plot::new(gl, &expression, RESOLUTION, &camera, screen_size);
+        let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
+        let projection = three_d::Camera::new_perspective(gl, vec3(10.0, 10.0, 10.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0),
+                                                        degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 100.0);
 
         Plotter3d {
             plot,
@@ -45,7 +47,8 @@ impl Plotter3d {
             operator_table,
             expression,
             camera,
-            screen_size
+            screen_size,
+            projection
         }
     }
 
@@ -59,11 +62,11 @@ impl Plotter3d {
     }
 
     pub fn zoom(&mut self, delta: f32) {
-        self.plot.projection.zoom(delta as f32);
+        self.projection.zoom(delta as f32);
     }
 
     pub fn rotate(&mut self, delta_x: f32, delta_y: f32) {
-        self.plot.projection.rotate(delta_x, delta_y);
+        self.projection.rotate(delta_x, delta_y);
     }
 
     pub fn translate(&mut self, gl: &Gl, delta_x: f32, delta_y: f32) {
@@ -73,16 +76,16 @@ impl Plotter3d {
     }
 
     pub fn draw(&self) {
-        self.plot.draw(&self.program);
+        self.plot.draw(&self.program, &self.projection);
     }
 
     fn update_view(&mut self, gl: &Gl) {
-        self.plot = Plot::new(gl, &self.expression, RESOLUTION, &self.camera, self.screen_size);
+        self.plot = Plot::new(gl, &self.expression, RESOLUTION, &self.camera);
     }
 }
 
 impl Plot {
-    fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera, screen_size: (u32, u32)) -> Plot {
+    fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera) -> Plot {
         let points = Plot::generate_points(expression, count, camera);
         let axis_points = Plot::generate_axis_lines(camera);
 
@@ -90,28 +93,28 @@ impl Plot {
         let position_buffer_size = ((count-1)*(count-1)*2*3) as u32;
         let axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
 
-        let projection = three_d::Camera::new_perspective(gl, vec3(10.0, 10.0, 10.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0),
-                                                        degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 100.0);
-
         Plot{
             position_buffer,
             position_buffer_size,
-            axis_buffer,
-            projection
+            axis_buffer
         }
     }
 
-    pub fn draw(&self, program: &Program) {
-        let world_view_projection = self.projection.get_projection() * self.projection.get_view();
+    pub fn draw(&self, program: &Program, projection: &three_d::Camera) {
+        let world_view_projection = projection.get_projection() * projection.get_view();
         program.add_uniform_mat4("worldViewProjectionMatrix", &world_view_projection).unwrap();
 
         program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec3("color", &vec3(0.3, 0.3, 0.3)).unwrap();
+        program.add_uniform_vec4("color", &vec4(0.3, 0.6, 0.3, 0.7)).unwrap();
+        program.draw_arrays_mode(self.position_buffer_size, consts::TRIANGLES);
+
+        program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
+        program.add_uniform_vec4("color", &vec4(0.2, 0.2, 0.2, 1.0)).unwrap();
         program.draw_arrays_mode(self.position_buffer_size, consts::LINES);
 
         // draw axis
         program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
-        program.add_uniform_vec3("color", &vec3(0.5, 0.5, 0.5)).unwrap();
+        program.add_uniform_vec4("color", &vec4(0.5, 0.5, 0.5, 1.0)).unwrap();
         program.draw_arrays_mode(6, consts::LINES);
     }
 
@@ -124,7 +127,7 @@ impl Plot {
             let mut y = camera.position.1 - camera.size/2.0;
             for j in 0..count {
                 let z = expression.eval((x, y));
-                grid[i][j] = (x, y, z);
+                grid[i][j] = (x - camera.position.0, y - camera.position.1, z);
                 y += step;
             }
             x += step;
