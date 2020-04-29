@@ -1,6 +1,6 @@
 use three_d::*;
 use crate::operator_descr::{OperatorTable, default_operator_table};
-use crate::parser::Parser;
+use crate::parser;
 use crate::expression::Expression;
 use three_d::Program;
 
@@ -35,7 +35,7 @@ impl Plotter3d {
             include_str!("../assets/shaders/color.frag")).unwrap();
 
         let operator_table = default_operator_table();
-        let expression = Parser::new(input, &operator_table).parse().unwrap();
+        let expression = parser::parse(input, &operator_table).unwrap();
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
         let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
         let projection = three_d::Camera::new_perspective(gl, vec3(10.0, 10.0, 10.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0),
@@ -53,7 +53,7 @@ impl Plotter3d {
     }
 
     pub fn set_expression(&mut self, gl: &Gl, input: &str) {
-        let expr = Parser::new(input, &self.operator_table).parse();
+        let expr = parser::parse(input, &self.operator_table);
         match expr {
             Ok(expr) => self.expression = expr,
             Err(_) => ()

@@ -3,6 +3,7 @@ use std::iter::Peekable;
 use std::result::Result;
 
 use crate::operator_descr::OperatorTable;
+use crate::operator_descr::BinaryOp;
 use crate::operator_descr::Assoc;
 use crate::expression::{Number, Operation, Expression};
 
@@ -36,13 +37,42 @@ impl<'s> Tokenizer<'s> {
         }
     }
 
-    fn read_number(&mut self) -> Token {
+    // Returns the lexed number and the number of digits it is composed of
+    fn read_integer(&mut self) -> (Number, u32) {
+        let mut digits = 0;
         let mut number: Number = 0.0;
+
         while self.input.peek().map_or(false, |c| c.is_digit(10)) {
+            digits += 1;
             number *= 10.0;
             number += self.input.next().unwrap().to_digit(10).unwrap() as Number;
         }
-        return Token::Number(number)
+
+        return (number, digits)
+    }
+
+    fn read_number(&mut self) -> Token {
+        let (integer_part, _) = self.read_integer();
+
+        // Parse decimal part
+        if self.input.peek().map_or(false, |c| *c == '.') {
+            self.input.next();
+            // Now we need digits for the decimal part, if none is found, it is an error
+            if !self.input.peek().map_or(false, |c| c.is_digit(10)) {
+                return Token::Error("Missing decimal part in floating point number");
+            } else {
+                let (decimal_digits, digits) = self.read_integer();
+
+                // Interpret the decimal part correctly, now it is an integer,
+                // but we want to divide it by 10^{digits}
+                let decimal_part_magnitude = (10 as i32).pow(digits) as Number;
+                let decimal_part = decimal_digits / decimal_part_magnitude;
+
+                return Token::Number(integer_part + decimal_part);
+            }
+        } else {
+            return Token::Number(integer_part);
+        }
     }
 
     fn read_identifier(&mut self) -> Token {
@@ -106,73 +136,108 @@ impl<'s> Tokenizer<'s> {
 // Parses an input string and produces
 // an Expression, that represents the semantics of the parsed expression
 // [it is basically the expression in postfix order]
-pub struct Parser<'s> {
+struct Parser<'s> {
     tokenizer: Tokenizer<'s>,
     table: &'s OperatorTable,
     look_ahead: Token,
+
+    // Internal state representing the current expression
+    // that is being parsed
+    operations: Vec<Operation>,
+    is_3d: bool,
 }
 
-type ExprInterpretation = Vec<Operation>;
+pub fn parse(input: & str, table: & OperatorTable) -> Result<Expression, &'static str>  {
+    let mut parser = Parser {
+        tokenizer: Tokenizer::new(input, table),
+        table: table,
+        look_ahead: Token::Eof,
+        operations: Vec::new(),
+        is_3d: false,
+    };
+
+    parser.look_ahead = parser.tokenizer.next_token();
+
+    parser.parse_expr(0)?;
+    match parser.look_ahead {
+        Token::Eof => Ok(Expression::new(parser.operations, parser.is_3d)),
+        _ => Err("Unexpected token at end of expression")
+    }
+}
 
 impl<'s> Parser<'s> {
-    pub fn new(input: &'s str, table: &'s OperatorTable) -> Parser<'s> {
-
-        let mut res = Parser {
-            tokenizer: Tokenizer::new(input, table),
-            table: table,
-            look_ahead: Token::Eof,
-        };
-
-        res.look_ahead = res.tokenizer.next_token();
-
-        return res;
-    }
-
-    pub fn parse(&mut self) -> Result<Expression, &'static str> {
-        let res = self.parse_expr(0)?;
-        match self.look_ahead {
-            Token::Eof => Ok(Expression::new(res)),
-            _ => Err("Unexpected token at end of expression")
-        }
-    }
-
-    fn parse_expr(&mut self, curr_prec: u32) -> Result<ExprInterpretation, &'static str> {
-        let mut lhs = self.parse_prefix()?;
+    fn parse_expr(&mut self, curr_prec: u32) -> Result<(), &'static str> {
+        self.parse_prefix()?;
 
         loop {
             match &self.look_ahead {
-                Token::Eof => return Ok(lhs),
-                Token::RightParen => return Ok(lhs),
+                Token::Eof => return Ok(()),
+                Token::RightParen => return Ok(()),
                 Token::Operator(name) => {
+                    let op: &BinaryOp;
+                    let is_implicit: bool;
                     match self.table.lookup_binary(name) {
-                        None => return Err("Expected binary operator"),
-                        Some(op) => {
-                            let curr_op_binds_tighter = curr_prec < op.prec
-                                                      || (curr_prec == op.prec && op.assoc == Assoc::Right);
-                            if curr_op_binds_tighter {
-                                // This operator has higher precedence,
-                                // so it binds tighter
-                                self.next_token();
-                                let mut rhs = self.parse_expr(op.prec)?;
-                                lhs.append(&mut rhs);
-                                lhs.push(Operation::BinaryOperation(op.semantics));
-                                continue; // Keep on looping
-                            } else {
-                                // We are done, this operator shouldn't be consumed here
-                                // it binds less tightly
-                                return Ok(lhs);
-                            }
+                        None => {
+                            // If it is not a binary operator it is a prefix starter,
+                            // so here there must be an implicit product [or an error which is going to be caught later]
+                            // We are sure * is a binary operator
+                            op = self.table.lookup_binary("*").unwrap();
+                            is_implicit = true;
+                        },
+                        Some(op_descr) => {
+                            op = op_descr;
+                            is_implicit = false;
                         }
                     }
-
+                    let curr_op_binds_tighter = curr_prec < op.prec
+                                              || (curr_prec == op.prec && op.assoc == Assoc::Right);
+                    if curr_op_binds_tighter {
+                        // This operator has higher precedence,
+                        // so it binds tighter
+                        self.parse_operation_rhs(op, is_implicit)?;
+                        continue; // Keep on looping
+                    } else {
+                        // We are done, this operator shouldn't be consumed here
+                        // it binds less tightly
+                        return Ok(());
+                    }
                 },
                 Token::Error(err) => return Err(err),
-                _ => return Err("Expected binary operator"),
+                _ => {
+                    // If there is no binary operator, then we can try parsing a prefix
+                    // and insert an implicit product here
+
+                    // We are sure * is a binary operator
+                    let op: &BinaryOp = self.table.lookup_binary("*").unwrap();
+
+                    let curr_op_binds_tighter = curr_prec < op.prec
+                                              || (curr_prec == op.prec && op.assoc == Assoc::Right);
+                    if curr_op_binds_tighter {
+                        // This operator has higher precedence,
+                        // so it binds tighter
+                        self.parse_operation_rhs(op, true)?;
+                        continue; // Keep on looping
+                    } else {
+                        // We are done, this operator shouldn't be consumed here
+                        // it binds less tightly
+                        return Ok(());
+                    }
+                }
             }
         }
     }
 
-    fn parse_prefix(&mut self) -> Result<ExprInterpretation, &'static str> {
+    // If is_implicit_op true, then we don't have to consume next token
+    fn parse_operation_rhs(&mut self, op: &BinaryOp, is_implicit_op: bool) -> Result<(), &'static str> {
+        if !is_implicit_op {
+            self.next_token();
+        }
+        self.parse_expr(op.prec)?;
+        self.operations.push(Operation::BinaryOperation(op.semantics));
+        Ok(())
+    }
+
+    fn parse_prefix(&mut self) -> Result<(), &'static str> {
         match self.look_ahead {
             Token::Operator(ref name) => {
                 // Check if the operator is a constant or an unary const.
@@ -181,37 +246,42 @@ impl<'s> Parser<'s> {
                     (None, None) => Err("Unexpected prefix"),
                     (Some(c), None) => {
                         self.next_token();
-                        Ok(vec![Operation::Constant(c.semantics)])
+                        self.operations.push(Operation::Constant(c.semantics));
+                        Ok(())
                     },
                     (None, Some(op)) => {
                         self.next_token();
-                        let mut arg = self.parse_prefix()?;
-                        arg.push(Operation::UnaryOperation(op.semantics));
-                        Ok(arg)
+                        self.parse_prefix()?;
+                        self.operations.push(Operation::UnaryOperation(op.semantics));
+                        Ok(())
                     },
                     (_,_) => Err("Ambiguous operator name")
                 }
             }
             Token::Number(n) => {
                 self.next_token();
-                Ok(vec![Operation::Constant(n)])
+                self.operations.push(Operation::Constant(n));
+                Ok(())
             },
             Token::XVar => {
                 self.next_token();
-                Ok(vec![Operation::Variable(|input| input.0)])
+                self.operations.push(Operation::Variable(|input| input.0));
+                Ok(())
             },
             Token::YVar => {
                 self.next_token();
-                Ok(vec![Operation::Variable(|input| input.1)])
+                self.operations.push(Operation::Variable(|input| input.1));
+                self.is_3d = true;
+                Ok(())
             },
             Token::LeftParen => {
                 self.next_token();
-                let sub_expr = self.parse_expr(0)?;
+                self.parse_expr(0)?;
                 // Make sure parentheses are well balanced
                 match self.look_ahead {
                     Token::RightParen => {
                         self.next_token();
-                        Ok(sub_expr)
+                        Ok(())
                     },
                     _ => Err("Missing )"),
                 }
