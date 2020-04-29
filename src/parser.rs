@@ -136,7 +136,7 @@ impl<'s> Tokenizer<'s> {
 // Parses an input string and produces
 // an Expression, that represents the semantics of the parsed expression
 // [it is basically the expression in postfix order]
-pub struct Parser<'s> {
+struct Parser<'s> {
     tokenizer: Tokenizer<'s>,
     table: &'s OperatorTable,
     look_ahead: Token,
@@ -147,34 +147,25 @@ pub struct Parser<'s> {
     is_3d: bool,
 }
 
+pub fn parse(input: & str, table: & OperatorTable) -> Result<Expression, &'static str>  {
+    let mut parser = Parser {
+        tokenizer: Tokenizer::new(input, table),
+        table: table,
+        look_ahead: Token::Eof,
+        operations: Vec::new(),
+        is_3d: false,
+    };
+
+    parser.look_ahead = parser.tokenizer.next_token();
+
+    parser.parse_expr(0)?;
+    match parser.look_ahead {
+        Token::Eof => Ok(Expression::new(parser.operations, parser.is_3d)),
+        _ => Err("Unexpected token at end of expression")
+    }
+}
+
 impl<'s> Parser<'s> {
-    pub fn new(input: &'s str, table: &'s OperatorTable) -> Parser<'s> {
-
-        let mut res = Parser {
-            tokenizer: Tokenizer::new(input, table),
-            table: table,
-            look_ahead: Token::Eof,
-            operations: Vec::new(),
-            is_3d: false,
-        };
-
-        res.look_ahead = res.tokenizer.next_token();
-
-        return res;
-    }
-
-    // parse takes ownership of the Parser because after it is
-    // done, there is no use in reusing the Parser object
-    pub fn parse(self) -> Result<Expression, &'static str> {
-        // This is to trick the borrow checker, I guess, ugly hack, fix
-        let mut zelf = self;
-        zelf.parse_expr(0)?;
-        match zelf.look_ahead {
-            Token::Eof => Ok(Expression::new(zelf.operations, zelf.is_3d)),
-            _ => Err("Unexpected token at end of expression")
-        }
-    }
-
     fn parse_expr(&mut self, curr_prec: u32) -> Result<(), &'static str> {
         self.parse_prefix()?;
 
