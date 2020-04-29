@@ -36,13 +36,42 @@ impl<'s> Tokenizer<'s> {
         }
     }
 
-    fn read_number(&mut self) -> Token {
+    // Returns the lexed number and the number of digits it is composed of
+    fn read_integer(&mut self) -> (Number, u32) {
+        let mut digits = 0;
         let mut number: Number = 0.0;
+
         while self.input.peek().map_or(false, |c| c.is_digit(10)) {
+            digits += 1;
             number *= 10.0;
             number += self.input.next().unwrap().to_digit(10).unwrap() as Number;
         }
-        return Token::Number(number)
+
+        return (number, digits)
+    }
+
+    fn read_number(&mut self) -> Token {
+        let (integer_part, _) = self.read_integer();
+
+        // Parse decimal part
+        if self.input.peek().map_or(false, |c| *c == '.') {
+            self.input.next();
+            // Now we need digits for the decimal part, if none is found, it is an error
+            if !self.input.peek().map_or(false, |c| c.is_digit(10)) {
+                return Token::Error("Missing decimal part in floating point number");
+            } else {
+                let (decimal_digits, digits) = self.read_integer();
+
+                // Interpret the decimal part correctly, now it is an integer,
+                // but we want to divide it by 10^{digits}
+                let decimal_part_magnitude = (10 as i32).pow(digits) as Number;
+                let decimal_part = decimal_digits / decimal_part_magnitude;
+
+                return Token::Number(integer_part + decimal_part);
+            }
+        } else {
+            return Token::Number(integer_part);
+        }
     }
 
     fn read_identifier(&mut self) -> Token {
