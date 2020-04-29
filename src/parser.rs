@@ -3,6 +3,7 @@ use std::iter::Peekable;
 use std::result::Result;
 
 use crate::operator_descr::OperatorTable;
+use crate::operator_descr::BinaryOp;
 use crate::operator_descr::Assoc;
 use crate::expression::{Number, Operation, Expression};
 
@@ -182,31 +183,67 @@ impl<'s> Parser<'s> {
                 Token::Eof => return Ok(()),
                 Token::RightParen => return Ok(()),
                 Token::Operator(name) => {
+                    let op: &BinaryOp;
+                    let is_implicit: bool;
                     match self.table.lookup_binary(name) {
-                        None => return Err("Expected binary operator"),
-                        Some(op) => {
-                            let curr_op_binds_tighter = curr_prec < op.prec
-                                                      || (curr_prec == op.prec && op.assoc == Assoc::Right);
-                            if curr_op_binds_tighter {
-                                // This operator has higher precedence,
-                                // so it binds tighter
-                                self.next_token();
-                                self.parse_expr(op.prec)?;
-                                self.operations.push(Operation::BinaryOperation(op.semantics));
-                                continue; // Keep on looping
-                            } else {
-                                // We are done, this operator shouldn't be consumed here
-                                // it binds less tightly
-                                return Ok(());
-                            }
+                        None => {
+                            // If it is not a binary operator it is a prefix starter,
+                            // so here there must be an implicit product [or an error which is going to be caught later]
+                            // We are sure * is a binary operator
+                            op = self.table.lookup_binary("*").unwrap();
+                            is_implicit = true;
+                        },
+                        Some(op_descr) => {
+                            op = op_descr;
+                            is_implicit = false;
                         }
                     }
-
+                    let curr_op_binds_tighter = curr_prec < op.prec
+                                              || (curr_prec == op.prec && op.assoc == Assoc::Right);
+                    if curr_op_binds_tighter {
+                        // This operator has higher precedence,
+                        // so it binds tighter
+                        self.parse_operation_rhs(op, is_implicit)?;
+                        continue; // Keep on looping
+                    } else {
+                        // We are done, this operator shouldn't be consumed here
+                        // it binds less tightly
+                        return Ok(());
+                    }
                 },
                 Token::Error(err) => return Err(err),
-                _ => return Err("Expected binary operator"),
+                _ => {
+                    // If there is no binary operator, then we can try parsing a prefix
+                    // and insert an implicit product here
+
+                    // We are sure * is a binary operator
+                    let op: &BinaryOp = self.table.lookup_binary("*").unwrap();
+
+                    let curr_op_binds_tighter = curr_prec < op.prec
+                                              || (curr_prec == op.prec && op.assoc == Assoc::Right);
+                    if curr_op_binds_tighter {
+                        // This operator has higher precedence,
+                        // so it binds tighter
+                        self.parse_operation_rhs(op, true)?;
+                        continue; // Keep on looping
+                    } else {
+                        // We are done, this operator shouldn't be consumed here
+                        // it binds less tightly
+                        return Ok(());
+                    }
+                }
             }
         }
+    }
+
+    // If is_implicit_op true, then we don't have to consume next token
+    fn parse_operation_rhs(&mut self, op: &BinaryOp, is_implicit_op: bool) -> Result<(), &'static str> {
+        if !is_implicit_op {
+            self.next_token();
+        }
+        self.parse_expr(op.prec)?;
+        self.operations.push(Operation::BinaryOperation(op.semantics));
+        Ok(())
     }
 
     fn parse_prefix(&mut self) -> Result<(), &'static str> {

@@ -5,7 +5,8 @@ mod expression;
 use three_d::*;
 
 fn main() {
-    let get_input = || {String::from("x^2/5 + y^2/5")};
+    let get_input = || {String::from("x^2/5 *  y^2/5")};
+    let get_input = || {String::from("2x^2 + 3sin(x)")};
     start_main(get_input);
 }
 
