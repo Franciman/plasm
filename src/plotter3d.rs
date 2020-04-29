@@ -75,8 +75,14 @@ impl Plotter3d {
         self.update_view(gl);
     }
 
-    pub fn draw(&self) {
-        self.plot.draw(&self.program, &self.projection);
+    pub fn draw(&self, gl: &Gl) {
+
+        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
+
+            self.plot.draw(&self.program, &self.projection);
+
+        }).unwrap();
+
     }
 
     fn update_view(&mut self, gl: &Gl) {
