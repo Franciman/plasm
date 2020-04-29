@@ -139,9 +139,12 @@ pub struct Parser<'s> {
     tokenizer: Tokenizer<'s>,
     table: &'s OperatorTable,
     look_ahead: Token,
-}
 
-type ExprInterpretation = Vec<Operation>;
+    // Internal state representing the current expression
+    // that is being parsed
+    operations: Vec<Operation>,
+    is_3d: bool,
+}
 
 impl<'s> Parser<'s> {
     pub fn new(input: &'s str, table: &'s OperatorTable) -> Parser<'s> {
@@ -150,6 +153,8 @@ impl<'s> Parser<'s> {
             tokenizer: Tokenizer::new(input, table),
             table: table,
             look_ahead: Token::Eof,
+            operations: Vec::new(),
+            is_3d: false,
         };
 
         res.look_ahead = res.tokenizer.next_token();
@@ -157,21 +162,25 @@ impl<'s> Parser<'s> {
         return res;
     }
 
-    pub fn parse(&mut self) -> Result<Expression, &'static str> {
-        let res = self.parse_expr(0)?;
-        match self.look_ahead {
-            Token::Eof => Ok(Expression::new(res)),
+    // parse takes ownership of the Parser because after it is
+    // done, there is no use in reusing the Parser object
+    pub fn parse(self) -> Result<Expression, &'static str> {
+        // This is to trick the borrow checker, I guess, ugly hack, fix
+        let mut zelf = self;
+        zelf.parse_expr(0)?;
+        match zelf.look_ahead {
+            Token::Eof => Ok(Expression::new(zelf.operations, zelf.is_3d)),
             _ => Err("Unexpected token at end of expression")
         }
     }
 
-    fn parse_expr(&mut self, curr_prec: u32) -> Result<ExprInterpretation, &'static str> {
-        let mut lhs = self.parse_prefix()?;
+    fn parse_expr(&mut self, curr_prec: u32) -> Result<(), &'static str> {
+        self.parse_prefix()?;
 
         loop {
             match &self.look_ahead {
-                Token::Eof => return Ok(lhs),
-                Token::RightParen => return Ok(lhs),
+                Token::Eof => return Ok(()),
+                Token::RightParen => return Ok(()),
                 Token::Operator(name) => {
                     match self.table.lookup_binary(name) {
                         None => return Err("Expected binary operator"),
@@ -182,14 +191,13 @@ impl<'s> Parser<'s> {
                                 // This operator has higher precedence,
                                 // so it binds tighter
                                 self.next_token();
-                                let mut rhs = self.parse_expr(op.prec)?;
-                                lhs.append(&mut rhs);
-                                lhs.push(Operation::BinaryOperation(op.semantics));
+                                self.parse_expr(op.prec)?;
+                                self.operations.push(Operation::BinaryOperation(op.semantics));
                                 continue; // Keep on looping
                             } else {
                                 // We are done, this operator shouldn't be consumed here
                                 // it binds less tightly
-                                return Ok(lhs);
+                                return Ok(());
                             }
                         }
                     }
@@ -201,7 +209,7 @@ impl<'s> Parser<'s> {
         }
     }
 
-    fn parse_prefix(&mut self) -> Result<ExprInterpretation, &'static str> {
+    fn parse_prefix(&mut self) -> Result<(), &'static str> {
         match self.look_ahead {
             Token::Operator(ref name) => {
                 // Check if the operator is a constant or an unary const.
@@ -210,37 +218,42 @@ impl<'s> Parser<'s> {
                     (None, None) => Err("Unexpected prefix"),
                     (Some(c), None) => {
                         self.next_token();
-                        Ok(vec![Operation::Constant(c.semantics)])
+                        self.operations.push(Operation::Constant(c.semantics));
+                        Ok(())
                     },
                     (None, Some(op)) => {
                         self.next_token();
-                        let mut arg = self.parse_prefix()?;
-                        arg.push(Operation::UnaryOperation(op.semantics));
-                        Ok(arg)
+                        self.parse_prefix()?;
+                        self.operations.push(Operation::UnaryOperation(op.semantics));
+                        Ok(())
                     },
                     (_,_) => Err("Ambiguous operator name")
                 }
             }
             Token::Number(n) => {
                 self.next_token();
-                Ok(vec![Operation::Constant(n)])
+                self.operations.push(Operation::Constant(n));
+                Ok(())
             },
             Token::XVar => {
                 self.next_token();
-                Ok(vec![Operation::Variable(|input| input.0)])
+                self.operations.push(Operation::Variable(|input| input.0));
+                Ok(())
             },
             Token::YVar => {
                 self.next_token();
-                Ok(vec![Operation::Variable(|input| input.1)])
+                self.operations.push(Operation::Variable(|input| input.1));
+                self.is_3d = true;
+                Ok(())
             },
             Token::LeftParen => {
                 self.next_token();
-                let sub_expr = self.parse_expr(0)?;
+                self.parse_expr(0)?;
                 // Make sure parentheses are well balanced
                 match self.look_ahead {
                     Token::RightParen => {
                         self.next_token();
-                        Ok(sub_expr)
+                        Ok(())
                     },
                     _ => Err("Missing )"),
                 }

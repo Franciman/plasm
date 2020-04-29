@@ -13,14 +13,23 @@ pub enum Operation {
 // it is a program to be run in a stack machine
 pub struct Expression {
     ops: Vec<Operation>,
+    // This flag indicates the need
+    // to plot the function in the 3d space
+    is_3d: bool,
 }
 
 impl Expression {
-    pub fn new(ops: Vec<Operation>) -> Expression {
+    pub fn new(ops: Vec<Operation>, is_3d: bool) -> Expression {
         Expression {
             ops: ops,
+            is_3d: is_3d,
         }
     }
+
+    pub fn is_3d(&self) -> bool {
+        self.is_3d
+    }
+
     pub fn eval(&self, input: InputSpace) -> Number {
         let mut stack = Vec::new();
 
