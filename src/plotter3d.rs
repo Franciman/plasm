@@ -1,15 +1,13 @@
 use three_d::*;
-use crate::operator_descr::{OperatorTable, default_operator_table};
-use crate::parser;
 use crate::expression::Expression;
 use three_d::Program;
+use crate::plotter;
 
 const RESOLUTION: usize = 50;
 
 pub struct Plotter3d {
     plot: Plot,
     program: Program,
-    operator_table: OperatorTable,
     expression: Expression,
     camera: Camera,
     screen_size: (usize, usize),
@@ -28,14 +26,9 @@ struct Plot {
 }
 
 impl Plotter3d {
-    pub fn new(gl: &Gl, input: &str, screen_size: (usize, usize)) -> Plotter3d {
+    pub fn new(gl: &Gl, expression: Expression, screen_size: (usize, usize)) -> Plotter3d {
 
-        let program = Program::from_source(gl,
-            include_str!("../assets/shaders/3d.vert"),
-            include_str!("../assets/shaders/color.frag")).unwrap();
-
-        let operator_table = default_operator_table();
-        let expression = parser::parse(input, &operator_table).unwrap();
+        let program = plotter::load_program(gl);
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
         let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
         let projection = three_d::Camera::new_perspective(gl, vec3(10.0, 10.0, 10.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0),
@@ -44,38 +37,30 @@ impl Plotter3d {
         Plotter3d {
             plot,
             program,
-            operator_table,
             expression,
             camera,
             screen_size,
             projection
         }
     }
+}
 
-    pub fn set_expression(&mut self, gl: &Gl, input: &str) {
-        let expr = parser::parse(input, &self.operator_table);
-        match expr {
-            Ok(expr) => self.expression = expr,
-            Err(_) => ()
-        }
-        self.update_view(gl);
+impl plotter::Plotter for Plotter3d {
+
+    fn set_expression(&mut self, expression: Expression) {
+        self.expression = expression
     }
 
-    pub fn zoom(&mut self, delta: f32) {
+    fn zoom(&mut self, delta: f32) {
         self.projection.zoom(delta as f32);
     }
 
-    pub fn rotate(&mut self, delta_x: f32, delta_y: f32) {
-        self.projection.rotate(delta_x, delta_y);
-    }
-
-    pub fn translate(&mut self, gl: &Gl, delta_x: f32, delta_y: f32) {
+    fn translate(&mut self, delta_x: f32, delta_y: f32) {
         self.camera.position.0 += delta_x * self.camera.size / self.screen_size.0 as f32;
         self.camera.position.1 += delta_y * self.camera.size / self.screen_size.1 as f32;
-        self.update_view(gl);
     }
 
-    pub fn draw(&self, gl: &Gl) {
+    fn draw(&self, gl: &Gl) {
 
         Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
 
@@ -93,7 +78,7 @@ impl Plotter3d {
 impl Plot {
     fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera) -> Plot {
         let points = Plot::generate_points(expression, count, camera);
-        let axis_points = Plot::generate_axis_lines(camera);
+        let axis_points = Plot::generate_axis_lines();
 
         let position_buffer = VertexBuffer::new_with_static_f32(&gl, &points).unwrap();
         let position_buffer_size = ((count-1)*(count-1)*2*3) as u32;
@@ -106,7 +91,7 @@ impl Plot {
         }
     }
 
-    pub fn draw(&self, program: &Program, projection: &three_d::Camera) {
+    fn draw(&self, program: &Program, projection: &three_d::Camera) {
         let world_view_projection = projection.get_projection() * projection.get_view();
         program.add_uniform_mat4("worldViewProjectionMatrix", &world_view_projection).unwrap();
 
@@ -165,7 +150,7 @@ impl Plot {
         points
     }
     
-    fn generate_axis_lines(camera: &Camera) -> Vec<f32> {
+    fn generate_axis_lines() -> Vec<f32> {
         vec![-10.0, 0.0, 0.0,
             10.0, 0.0, 0.0,
             0.0, -10.0, 0.0,
