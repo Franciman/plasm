@@ -1,11 +1,11 @@
-mod plotter;
+mod plotter3d;
 mod operator_descr;
 mod parser;
 mod expression;
 use three_d::*;
 
 fn main() {
-    let get_input = || {String::from("sin(x*10)")};
+    let get_input = || {String::from("x^2/5 + y^2/5")};
     start_main(get_input);
 }
 
@@ -17,11 +17,12 @@ fn start_main<F: 'static>(get_input: F) where
 
     let gl = window.gl();
 
-    let mut plotter = plotter::Plotter::new(&gl, "sin(x)");
+    let input = get_input();
+    let mut plotter = plotter3d::Plotter3d::new(&gl, input.as_str(), (screen_width, screen_height));
 
     // main loop
-    let mut moving = false;
-    let mut old_input = String::from("sin(x)");
+    let mut dragging = false;
+    let mut old_input = input;
     window.render_loop(move |frame_input|
     {
         let input = get_input();
@@ -33,26 +34,23 @@ fn start_main<F: 'static>(get_input: F) where
         for event in frame_input.events.iter() {
             match event {
                 Event::MouseClick {state, button, ..} => {
-                    moving = *button == MouseButton::Left && *state == State::Pressed;
+                    dragging = *button == MouseButton::Left && *state == State::Pressed;
                 },
                 Event::MouseMotion {delta} => {
-                    if moving {
-                        let delta_x = -delta.0 as f32 / 200.0;
-                        let delta_y = delta.1 as f32 / 200.0;
-                        // todo move plotter
+                    if dragging {
+                        let delta_x = -delta.0 as f32;
+                        let delta_y = delta.1 as f32;
+                        plotter.translate(&gl, delta_x, delta_y);
                     }
                 },
                 Event::MouseWheel {delta} => {
-                    plotter.zoom(&gl, *delta as f32);
+                    plotter.zoom(*delta as f32);
                 },
                 _ => ()
             }
         }
 
-        Screen::write(&gl, 0, 0, screen_width, screen_height, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
+        plotter.draw(&gl);
 
-            plotter.plot();
-
-        }).unwrap();
     }).unwrap();
 }
