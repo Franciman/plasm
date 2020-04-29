@@ -12,7 +12,7 @@ pub struct Plotter3d {
     operator_table: OperatorTable,
     expression: Expression,
     camera: Camera,
-    screen_size: (u32, u32),
+    screen_size: (usize, usize),
     projection: three_d::Camera
 }
 
@@ -28,7 +28,7 @@ struct Plot {
 }
 
 impl Plotter3d {
-    pub fn new(gl: &Gl, input: &str, screen_size: (u32, u32)) -> Plotter3d {
+    pub fn new(gl: &Gl, input: &str, screen_size: (usize, usize)) -> Plotter3d {
 
         let program = Program::from_source(gl,
             include_str!("../assets/shaders/3d.vert"),

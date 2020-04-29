@@ -18,7 +18,7 @@ fn start_main<F: 'static>(get_input: F) where
     let gl = window.gl();
 
     let input = get_input();
-    let mut plotter = plotter3d::Plotter3d::new(&gl, input.as_str(), (screen_width as u32, screen_height as u32));
+    let mut plotter = plotter3d::Plotter3d::new(&gl, input.as_str(), (screen_width, screen_height));
 
     // main loop
     let mut dragging = false;
@@ -50,10 +50,7 @@ fn start_main<F: 'static>(get_input: F) where
             }
         }
 
-        Screen::write(&gl, 0, 0, screen_width, screen_height, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
+        plotter.draw(&gl);
 
-            plotter.draw();
-
-        }).unwrap();
     }).unwrap();
 }
