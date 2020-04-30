@@ -14,17 +14,6 @@ pub struct Plotter3d {
     projection: three_d::Camera
 }
 
-struct Camera {
-    position: (f32, f32, f32),
-    size: f32,
-}
-
-struct Plot {
-    position_buffer: VertexBuffer,
-    position_buffer_size: u32,
-    axis_buffer: VertexBuffer,
-}
-
 impl Plotter3d {
     pub fn new(gl: &Gl, expression: Expression, screen_size: (usize, usize)) -> Plotter3d {
 
@@ -75,6 +64,11 @@ impl plotter::Plotter for Plotter3d {
     }
 }
 
+struct Camera {
+    position: (f32, f32, f32),
+    size: f32,
+}
+
 impl Camera { 
     // project a point to normalized coordinates [-1,1]
     fn to_normalized_coordinates(&self, point: (f32, f32, f32)) -> (f32, f32, f32) {
@@ -85,42 +79,19 @@ impl Camera {
     }
 }
 
+struct Plot {
+    position_buffer: VertexBuffer,
+    position_buffer_size: u32,
+    grid_buffer: VertexBuffer,
+    grid_buffer_size: u32,
+    axis_buffer: VertexBuffer,
+}
+
 impl Plot {
+
     fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera) -> Plot {
-        let points = Plot::generate_points(expression, count, camera);
-        let axis_points = Plot::generate_axis_lines();
 
-        let position_buffer = VertexBuffer::new_with_static_f32(&gl, &points).unwrap();
-        let position_buffer_size = ((count-1)*(count-1)*2*3) as u32;
-        let axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
-
-        Plot{
-            position_buffer,
-            position_buffer_size,
-            axis_buffer
-        }
-    }
-
-    fn draw(&self, program: &Program, projection: &three_d::Camera) {
-        let world_view_projection = projection.get_projection() * projection.get_view();
-        program.add_uniform_mat4("worldViewProjectionMatrix", &world_view_projection).unwrap();
-
-        program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.3, 0.6, 0.3, 0.7)).unwrap();
-        program.draw_arrays_mode(self.position_buffer_size, consts::TRIANGLES);
-
-        program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.2, 0.2, 0.2, 1.0)).unwrap();
-        program.draw_arrays_mode(self.position_buffer_size, consts::LINES);
-
-        // draw axis
-        program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.5, 0.5, 0.5, 1.0)).unwrap();
-        program.draw_arrays_mode(6, consts::LINES);
-    }
-
-    fn generate_points(expression: &Expression, count: usize, camera: &Camera) -> Vec<f32> {
-    
+        // generate grid positions
         let mut grid = vec![vec![(0.0, 0.0, 0.0); count]; count];
         let step = camera.size / count as f32;
         let mut x = camera.position.0 - camera.size/2.0;
@@ -135,9 +106,11 @@ impl Plot {
             x += step;
         }
     
-        // each square in the grid has 2 triangles with 3 vertices in 3D coordinates
-        let len = (count-1)*(count-1)*2*3*3; 
-        let mut points: Vec<f32> = Vec::with_capacity(len);
+        // generate triangles: each square in the grid has 2 triangles with 3 vertices in 3D coordinates
+        let n_triangles = (count-1)*(count-1)*2;
+        let n_vertices = n_triangles * 3;
+        let len = n_vertices*3; 
+        let mut triangles: Vec<f32> = Vec::with_capacity(len);
     
         for i in 0..count-1 {
             for j in 0..count-1 {
@@ -147,18 +120,79 @@ impl Plot {
                 let p4 = grid[i+1][j];
     
                 // first triangle
-                points.push(p1.0); points.push(p1.1); points.push(p1.2);
-                points.push(p2.0); points.push(p2.1); points.push(p2.2);
-                points.push(p3.0); points.push(p3.1); points.push(p3.2);
+                triangles.push(p1.0); triangles.push(p1.1); triangles.push(p1.2);
+                triangles.push(p2.0); triangles.push(p2.1); triangles.push(p2.2);
+                triangles.push(p3.0); triangles.push(p3.1); triangles.push(p3.2);
     
                 // second triangle
-                points.push(p1.0); points.push(p1.1); points.push(p1.2);
-                points.push(p3.0); points.push(p3.1); points.push(p3.2);
-                points.push(p4.0); points.push(p4.1); points.push(p4.2);
+                triangles.push(p1.0); triangles.push(p1.1); triangles.push(p1.2);
+                triangles.push(p3.0); triangles.push(p3.1); triangles.push(p3.2);
+                triangles.push(p4.0); triangles.push(p4.1); triangles.push(p4.2);
             }
         }
+
+        let position_buffer = VertexBuffer::new_with_static_f32(&gl, &triangles).unwrap();
+        let position_buffer_size = n_vertices as u32;
+
+        // generate grid frame
+        let n_lines = 2*count*(count-1);
+        let n_vertices = n_lines * 2;
+        let len = n_vertices*3; 
+        let mut lines: Vec<f32> = Vec::with_capacity(len);
     
-        points
+        // rows
+        for i in 0..count {
+            for j in 0..count-1 {
+                let p1 = grid[i][j];
+                let p2 = grid[i][j+1];
+
+                lines.push(p1.0); lines.push(p1.1); lines.push(p1.2);
+                lines.push(p2.0); lines.push(p2.1); lines.push(p2.2);
+            }
+        }
+
+        // columns
+        for i in 0..count {
+            for j in 0..count-1 {
+                let p1 = grid[j][i];
+                let p2 = grid[j+1][i];
+
+                lines.push(p1.0); lines.push(p1.1); lines.push(p1.2);
+                lines.push(p2.0); lines.push(p2.1); lines.push(p2.2);
+            }
+        }
+
+        let grid_buffer = VertexBuffer::new_with_static_f32(&gl, &lines).unwrap();
+        let grid_buffer_size = n_vertices as u32;
+
+        let axis_points = Plot::generate_axis_lines();
+        let axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
+
+        Plot{
+            position_buffer,
+            position_buffer_size,
+            grid_buffer,
+            grid_buffer_size,
+            axis_buffer
+        }
+    }
+
+    fn draw(&self, program: &Program, projection: &three_d::Camera) {
+        let world_view_projection = projection.get_projection() * projection.get_view();
+        program.add_uniform_mat4("worldViewProjectionMatrix", &world_view_projection).unwrap();
+
+        program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
+        program.add_uniform_vec4("color", &vec4(0.3, 0.6, 0.3, 0.7)).unwrap();
+        program.draw_arrays_mode(self.position_buffer_size, consts::TRIANGLES);
+
+        program.use_attribute_vec3_float(&self.grid_buffer, "position").unwrap();
+        program.add_uniform_vec4("color", &vec4(0.2, 0.2, 0.2, 1.0)).unwrap();
+        program.draw_arrays_mode(self.grid_buffer_size, consts::LINES);
+
+        // draw axis
+        program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
+        program.add_uniform_vec4("color", &vec4(0.5, 0.5, 0.5, 1.0)).unwrap();
+        program.draw_arrays_mode(6, consts::LINES);
     }
     
     fn generate_axis_lines() -> Vec<f32> {
