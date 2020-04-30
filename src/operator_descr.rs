@@ -32,6 +32,26 @@ pub fn default_operator_table() -> OperatorTable {
             symbol: "-",
             semantics: |x| (-x),
         },
+        UnaryOp {
+            symbol: "sgn",
+            semantics: |x| x.signum(),
+        },
+        UnaryOp {
+            symbol: "abs",
+            semantics: |x| x.abs(),
+        },
+        UnaryOp {
+            symbol: "asin",
+            semantics: |x| x.asin(),
+        },
+        UnaryOp {
+            symbol: "acos",
+            semantics: |x| x.acos(),
+        },
+        UnaryOp {
+            symbol: "atan",
+            semantics: |x| x.atan(),
+        },
     ];
 
     let binary_ops = vec![
