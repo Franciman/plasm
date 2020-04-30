@@ -71,8 +71,8 @@ impl plotter::Plotter for Plotter2d {
 
 
 impl Camera { 
-    // project a point to screen coordinate [-1,1]
-    fn to_screen_coordinate(&self, point: (f32, f32)) -> (f32, f32) {
+    // project a point to normalized coordinates [-1,1]
+    fn to_normalized_coordinates(&self, point: (f32, f32)) -> (f32, f32) {
         let x_proj = 2.0*(point.0 - self.position.0)/self.size;
         let y_proj = 2.0*(point.1 - self.position.1)/self.size;
         (x_proj, y_proj)
@@ -122,7 +122,7 @@ impl Plot {
             let count = count as f32;
             let x = x_start + i * camera.size/count;
             let y = expression.eval((x, 0.0)); // y=0 as there is no y value
-            let (x_screen, y_screen) = camera.to_screen_coordinate((x, y));
+            let (x_screen, y_screen) = camera.to_normalized_coordinates((x, y));
 
             points.push(x_screen);
             points.push(y_screen);
@@ -133,7 +133,7 @@ impl Plot {
     }
 
     fn generate_axis_lines(camera: &Camera) -> Vec<f32> {
-        let (x_zero, y_zero) = camera.to_screen_coordinate((0.0, 0.0));
+        let (x_zero, y_zero) = camera.to_normalized_coordinates((0.0, 0.0));
 
         vec![-1.0, y_zero, 0.0,
             1.0, y_zero, 0.0,
