@@ -1,11 +1,22 @@
 mod plotter3d;
+mod plotter2d;
+mod plotter;
 mod operator_descr;
 mod parser;
 mod expression;
 use three_d::*;
+use plotter::Plotter;
+use log::info;
+
+const DEFAULT_EXPR: &str = "sin(x)+sin(y)";
+
+enum DrawingMode {
+    Mode2d,
+    Mode3d,
+}
 
 fn main() {
-    let get_input = || {String::from("x^2/5 + y^2/5")};
+    let get_input = || {String::from(DEFAULT_EXPR)};
     start_main(get_input);
 }
 
@@ -14,20 +25,43 @@ fn start_main<F: 'static>(get_input: F) where
 
     let mut window = Window::new_default("Plasm").unwrap();
     let (screen_width, screen_height) = window.framebuffer_size();
-
     let gl = window.gl();
 
-    let input = get_input();
-    let mut plotter = plotter3d::Plotter3d::new(&gl, input.as_str(), (screen_width, screen_height));
+    let operator_table = operator_descr::default_operator_table();
+    let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
+    let mut plotter2d = plotter2d::Plotter2d::new(&gl, expression, (screen_width, screen_height));
+    let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
+    let mut plotter3d = plotter3d::Plotter3d::new(&gl, expression, (screen_width, screen_height));
 
     // main loop
     let mut dragging = false;
-    let mut old_input = input;
+    let mut old_input = String::from(DEFAULT_EXPR);
+    let mut drawing_mode = DrawingMode::Mode3d;
     window.render_loop(move |frame_input|
     {
         let input = get_input();
         if input != old_input {
-            plotter.set_expression(&gl, input.as_str());
+            let expression = parser::parse(&input, &operator_table);
+            match expression {
+                Ok(expr) => {
+                    drawing_mode = if expr.is_3d() {DrawingMode::Mode3d} else {DrawingMode::Mode2d};
+                    match &drawing_mode {
+                        DrawingMode::Mode2d => {
+                            plotter2d.set_expression(expr);
+                            plotter2d.update_view(&gl);
+                            info!("Draw 2d function");
+                        },
+                        DrawingMode::Mode3d => {
+                            plotter3d.set_expression(expr);
+                            plotter3d.update_view(&gl);
+                            info!("Draw 3d function");
+                        }
+                    }
+                }
+                Err(_) => {
+                    info!("Could not parse input function");
+                }
+            }
             old_input = input;
         }
 
@@ -40,17 +74,43 @@ fn start_main<F: 'static>(get_input: F) where
                     if dragging {
                         let delta_x = -delta.0 as f32;
                         let delta_y = delta.1 as f32;
-                        plotter.translate(&gl, delta_x, delta_y);
+
+                        match &drawing_mode {
+                            DrawingMode::Mode2d => {
+                                plotter2d.translate(delta_x, delta_y);
+                                plotter2d.update_view(&gl);
+                            },
+                            DrawingMode::Mode3d => {
+                                plotter3d.translate(delta_x, delta_y);
+                                plotter3d.update_view(&gl);
+                            }
+                        }
                     }
                 },
                 Event::MouseWheel {delta} => {
-                    plotter.zoom(*delta as f32);
+                    match &drawing_mode {
+                        DrawingMode::Mode2d => {
+                            plotter2d.zoom(*delta as f32);
+                            plotter2d.update_view(&gl);
+                        },
+                        DrawingMode::Mode3d => {
+                            plotter3d.zoom(*delta as f32);
+                            plotter3d.update_view(&gl);
+                        }
+                    }
                 },
                 _ => ()
             }
         }
 
-        plotter.draw(&gl);
+        match &drawing_mode {
+            DrawingMode::Mode2d => {
+                plotter2d.draw(&gl);
+            },
+            DrawingMode::Mode3d => {
+                plotter3d.draw(&gl);
+            }
+        }
 
     }).unwrap();
 }

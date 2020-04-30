@@ -1,6 +1,8 @@
 # plasm
 A FAST mathematical function plotter which builds to both desktop (Rust + OpenGL) and web (Rust to WebAssembly).
 
+[**homepage**](https://plasm.acqua.team/)
+
 ## Build
 ### Desktop
 ```console
@@ -23,8 +25,14 @@ Go to http://localhost:8080 in a browser.
 
 
 ## Current feature
-Simple 2D mathematical functions plotter.
+2D/3D mathematical functions plotter.
+
+## API
+Make a GET request to `https://plasm.acqua.team/` with a GET parameter `"q"`  \
+For example:
+```
+https://plasm.acqua.team/?q=sin%28x%29%2Bcos%28y%29
+```
 
 ## TODO:
 - Implicit functions
-- 3D functions
