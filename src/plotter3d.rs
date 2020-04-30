@@ -31,8 +31,8 @@ impl Plotter3d {
         let program = plotter::load_program(gl);
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
         let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
-        let projection = three_d::Camera::new_perspective(gl, vec3(10.0, 10.0, 10.0), vec3(0.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0),
-                                                        degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 100.0);
+        let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
+                                                        degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 10.0);
 
         Plotter3d {
             plot,
@@ -52,7 +52,7 @@ impl plotter::Plotter for Plotter3d {
     }
 
     fn zoom(&mut self, delta: f32) {
-        self.projection.zoom(delta as f32);
+        self.camera.size *= (1.1 as f32).powf(delta);
     }
 
     fn translate(&mut self, delta_x: f32, delta_y: f32) {
@@ -72,6 +72,16 @@ impl plotter::Plotter for Plotter3d {
 
     fn update_view(&mut self, gl: &Gl) {
         self.plot = Plot::new(gl, &self.expression, RESOLUTION, &self.camera);
+    }
+}
+
+impl Camera { 
+    // project a point to normalized coordinates [-1,1]
+    fn to_normalized_coordinates(&self, point: (f32, f32, f32)) -> (f32, f32, f32) {
+        let x_proj = 2.0*(point.0 - self.position.0)/self.size;
+        let y_proj = 2.0*(point.1 - self.position.1)/self.size;
+        let z_proj = 2.0*(point.2 - self.position.2)/self.size;
+        (x_proj, y_proj, z_proj)
     }
 }
 
@@ -118,7 +128,8 @@ impl Plot {
             let mut y = camera.position.1 - camera.size/2.0;
             for j in 0..count {
                 let z = expression.eval((x, y));
-                grid[i][j] = (x - camera.position.0, y - camera.position.1, z);
+                let point = camera.to_normalized_coordinates((x,y,z));
+                grid[i][j] = (point.0, point.2, -point.1); // y and z axis are swapped in opengl
                 y += step;
             }
             x += step;
@@ -151,11 +162,11 @@ impl Plot {
     }
     
     fn generate_axis_lines() -> Vec<f32> {
-        vec![-10.0, 0.0, 0.0,
-            10.0, 0.0, 0.0,
-            0.0, -10.0, 0.0,
-            0.0, 10.0, 0.0,
-            0.0, 0.0, -10.0,
-            0.0, 0.0, 10.0]
+        vec![-1.0, 0.0, 0.0,
+            1.0, 0.0, 0.0,
+            0.0, -1.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 0.0, -1.0,
+            0.0, 0.0, 1.0]
     }
 }
