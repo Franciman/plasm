@@ -3,6 +3,8 @@ A FAST mathematical function plotter which builds to both desktop (Rust + OpenGL
 
 [**homepage**](https://plasm.acqua.team/)
 
+![alt text]( screenshots/3dplasm.gif )
+
 ## Build
 ### Desktop
 ```console
@@ -53,3 +55,6 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 * @Franciman
 * @Frankplus
+
+
+![alt text]( screenshots/3dplasm_1.gif )

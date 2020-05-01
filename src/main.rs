@@ -39,6 +39,7 @@ fn start_main<F: 'static>(get_input: F) where
     let mut drawing_mode = DrawingMode::Mode3d;
     window.render_loop(move |frame_input|
     {
+        // read input
         let input = get_input();
         if input != old_input {
             let expression = parser::parse(&input, &operator_table);
@@ -65,6 +66,7 @@ fn start_main<F: 'static>(get_input: F) where
             old_input = input;
         }
 
+        // mouse events handling
         for event in frame_input.events.iter() {
             match event {
                 Event::MouseClick {state, button, ..} => {
@@ -103,14 +105,20 @@ fn start_main<F: 'static>(get_input: F) where
             }
         }
 
+        // draw
         match &drawing_mode {
             DrawingMode::Mode2d => {
                 plotter2d.draw(&gl);
             },
             DrawingMode::Mode3d => {
                 plotter3d.draw(&gl);
+
+                // rotate
+                let delta_rotation = frame_input.elapsed_time as f32 / 200.0;
+                plotter3d.rotate(delta_rotation);
             }
         }
+
 
     }).unwrap();
 }

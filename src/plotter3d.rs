@@ -32,6 +32,10 @@ impl Plotter3d {
             projection
         }
     }
+
+    pub fn rotate(&mut self, delta: f32) {
+        self.projection.rotate(delta, 0.0);
+    }
 }
 
 impl plotter::Plotter for Plotter3d {
