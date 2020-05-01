@@ -36,3 +36,20 @@ https://plasm.acqua.team/?q=sin%28x%29%2Bcos%28y%29
 
 ## TODO:
 - Implicit functions
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.
+
+
+## Contact
+
+- Francesco Magliocca - [@Franciman]()
+- Francesco Pham - [@Frankplus](https://www.linkedin.com/in/francesco-pham-54128486/)
+
+
+<!-- ACKNOWLEDGEMENTS -->
+## Acknowledgements
+
+* @Franciman
+* @Frankplus

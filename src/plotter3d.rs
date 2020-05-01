@@ -41,7 +41,7 @@ impl plotter::Plotter for Plotter3d {
     }
 
     fn zoom(&mut self, delta: f32) {
-        self.camera.size *= (1.1 as f32).powf(delta);
+        self.camera.size *= (1.01 as f32).powf(delta);
     }
 
     fn translate(&mut self, delta_x: f32, delta_y: f32) {
