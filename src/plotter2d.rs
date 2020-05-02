@@ -37,6 +37,10 @@ impl Plotter2d {
             screen_size
         }
     }
+
+    pub fn update_view(&mut self, gl: &Gl) {
+        self.plot = Plot::new(gl, &self.expression, self.screen_size.0 as u32, &self.camera);
+    }
 }
 
 impl plotter::Plotter for Plotter2d {
@@ -58,10 +62,6 @@ impl plotter::Plotter for Plotter2d {
         Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
             self.plot.draw(&self.program);
         }).unwrap();
-    }
-
-    fn update_view(&mut self, gl: &Gl) {
-        self.plot = Plot::new(gl, &self.expression, self.screen_size.0 as u32, &self.camera);
     }
 }
 

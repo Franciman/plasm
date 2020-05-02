@@ -57,7 +57,7 @@ fn start_main<F: 'static>(get_input: F) where
                         },
                         DrawingMode::Mode3d => {
                             plotter3d.set_expression(expr);
-                            plotter3d.update_view(&gl);
+                            plotter3d.update_view();
                             info!("Draw 3d function");
                         }
                     }
@@ -87,7 +87,7 @@ fn start_main<F: 'static>(get_input: F) where
                             },
                             DrawingMode::Mode3d => {
                                 plotter3d.translate(delta_x, delta_y);
-                                plotter3d.update_view(&gl);
+                                plotter3d.update_view();
                             }
                         }
                     }
@@ -100,7 +100,7 @@ fn start_main<F: 'static>(get_input: F) where
                         },
                         DrawingMode::Mode3d => {
                             plotter3d.zoom(*delta as f32);
-                            plotter3d.update_view(&gl);
+                            plotter3d.update_view();
                         }
                     }
                 },

@@ -44,6 +44,10 @@ impl Plotter3d {
     pub fn rotate(&mut self, delta: f32) {
         self.projection.rotate(delta, 0.0);
     }
+
+    pub fn update_view(&mut self) {
+        self.plot.update_positions(&self.expression, RESOLUTION, &self.camera);
+    }
 }
 
 impl Plotter for Plotter3d {
@@ -73,10 +77,6 @@ impl Plotter for Plotter3d {
         }).unwrap();
 
     }
-
-    fn update_view(&mut self, gl: &Gl) {
-        self.plot = Plot::new(gl, &self.expression, RESOLUTION, &self.camera);
-    }
 }
 
 struct Camera {
@@ -103,22 +103,7 @@ impl Plot {
 
     fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera) -> Plot {
 
-        // generate grid positions
-        let mut positions: Vec<f32> = Vec::with_capacity(count * count * 3);
-        let step = camera.size / count as f32;
-        let mut x = camera.position.0 - camera.size/2.0;
-        for _ in 0..count {
-            let mut y = camera.position.1 - camera.size/2.0;
-            for _ in 0..count {
-                let z = expression.eval((x, y));
-                let point = camera.to_normalized_coordinates((x,y,z));
-                positions.push(point.0);
-                positions.push(point.2);
-                positions.push(-point.1);
-                y += step;
-            }
-            x += step;
-        }
+        let positions = Plot::generate_grid_positions(expression, count, camera);
     
         // generate triangles: each square in the grid has 2 triangles
         let n_triangles = (count-1)*(count-1)*2;
@@ -148,27 +133,28 @@ impl Plot {
         plot_mesh.diffuse_intensity = 0.2;
         plot_mesh.specular_intensity = 0.4;
         plot_mesh.specular_power = 20.0;
-        plot_mesh.color = vec3(0.6, 0.6, 1.0);
+        plot_mesh.color = vec3(0.6, 1.0, 0.6);
 
 
         // generate grid wireframe
         let n_lines = 2*count*(count-1);
         let n_vertices = n_lines * 3;
         let mut indices: Vec<u32> = Vec::with_capacity(n_vertices);
-        for i in (0..count).step_by(2) {
-            for j in (0..count-2).step_by(2) {
+        let step = 1;
+        for i in (0..count).step_by(step) {
+            for j in (0..count-2).step_by(step) {
                 indices.push(to_vec_index((i, j)));
-                indices.push(to_vec_index((i, j+2)));
-                indices.push(to_vec_index((i, j+2)));
+                indices.push(to_vec_index((i, j+step)));
+                indices.push(to_vec_index((i, j+step)));
 
                 indices.push(to_vec_index((j, i)));
-                indices.push(to_vec_index((j+2, i)));
-                indices.push(to_vec_index((j+2, i)));
+                indices.push(to_vec_index((j+step, i)));
+                indices.push(to_vec_index((j+step, i)));
             }
         }
 
-        let mut grid = Edges::new(gl, &indices, &positions, 0.003);
-        grid.color = vec3(0.5, 0.5, 0.5);
+        let mut grid = Edges::new(gl, &indices, &positions, 0.001);
+        grid.color = vec3(0.6, 0.6, 0.6);
 
         Plot {
             plot_mesh,
@@ -176,10 +162,37 @@ impl Plot {
         }
     }
 
+    fn update_positions(&mut self, expression: &Expression, count: usize, camera: &Camera) {
+        let positions = Plot::generate_grid_positions(expression, count, camera);
+        self.plot_mesh.update_positions(&positions).unwrap();
+        self.grid.update_positions(&positions);
+    }
+
     fn render(&self, projection: &three_d::Camera) {
         let transformation = Mat4::identity();
         self.plot_mesh.render(&transformation, projection);
         self.grid.render(&transformation, projection);
+    }
+
+    fn generate_grid_positions(expression: &Expression, count: usize, camera: &Camera) ->  Vec<f32> {
+        // generate grid positions
+        let mut positions: Vec<f32> = Vec::with_capacity(count * count * 3);
+        let step = camera.size / count as f32;
+        let mut x = camera.position.0 - camera.size/2.0;
+        for _ in 0..count {
+            let mut y = camera.position.1 - camera.size/2.0;
+            for _ in 0..count {
+                let z = expression.eval((x, y));
+                let point = camera.to_normalized_coordinates((x,y,z));
+                positions.push(point.0);
+                positions.push(point.2);
+                positions.push(-point.1);
+                y += step;
+            }
+            x += step;
+        }
+
+        positions
     }
 }
 
@@ -197,9 +210,11 @@ impl Axis {
                             0.0, 0.0, 1.0];
 
         let indices = vec![2,3,3,4,5,5,0,1,1];
+        let mut axis = Edges::new(gl, &indices, &positions, 0.007);
+        axis.color = vec3(0.6, 0.6, 0.6);
 
         Axis {
-            axis: Edges::new(gl, &indices, &positions, 0.007)
+            axis
         }
     }
 
