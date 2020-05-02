@@ -999,7 +999,6 @@ dependencies = [
 [[package]]
 name = "three-d"
 version = "0.1.0"
-source = "git+https://github.com/frankplus/three-d#f442e52f03d7ff663aa12afa8fbc91715e516b11"
 dependencies = [
  "bincode",
  "cgmath",

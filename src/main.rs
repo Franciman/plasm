@@ -27,11 +27,14 @@ fn start_main<F: 'static>(get_input: F) where
     let (screen_width, screen_height) = window.framebuffer_size();
     let gl = window.gl();
 
+    let mut renderer = DeferredPipeline::new(&gl).unwrap();
+
     let operator_table = operator_descr::default_operator_table();
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
     let mut plotter2d = plotter2d::Plotter2d::new(&gl, expression, (screen_width, screen_height));
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
     let mut plotter3d = plotter3d::Plotter3d::new(&gl, expression, (screen_width, screen_height));
+    
 
     // main loop
     let mut dragging = false;
@@ -108,10 +111,11 @@ fn start_main<F: 'static>(get_input: F) where
         // draw
         match &drawing_mode {
             DrawingMode::Mode2d => {
-                plotter2d.draw(&gl);
+                plotter2d.render(&gl, &mut renderer);
             },
             DrawingMode::Mode3d => {
-                plotter3d.draw(&gl);
+
+                plotter3d.render(&gl, &mut renderer);
 
                 // rotate
                 let delta_rotation = frame_input.elapsed_time as f32 / 200.0;

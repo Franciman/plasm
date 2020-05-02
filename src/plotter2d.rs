@@ -54,14 +54,10 @@ impl plotter::Plotter for Plotter2d {
         self.camera.position.1 += delta_y * self.camera.size / self.screen_size.1 as f32;
     }
 
-    fn draw(&self, gl: &Gl) {
-
+    fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline) {
         Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
-
             self.plot.draw(&self.program);
-
         }).unwrap();
-
     }
 
     fn update_view(&mut self, gl: &Gl) {

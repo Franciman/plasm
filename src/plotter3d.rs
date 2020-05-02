@@ -1,44 +1,57 @@
 use three_d::*;
 use crate::expression::Expression;
-use three_d::Program;
-use crate::plotter;
+use crate::plotter::Plotter;
 
 const RESOLUTION: usize = 50;
 
 pub struct Plotter3d {
     plot: Plot,
-    program: Program,
     expression: Expression,
     camera: Camera,
     screen_size: (usize, usize),
-    projection: three_d::Camera
+    projection: three_d::Camera,
+    ambient_light: AmbientLight,
+    directional_light: DirectionalLight
 }
 
 impl Plotter3d {
     pub fn new(gl: &Gl, expression: Expression, screen_size: (usize, usize)) -> Plotter3d {
 
-        let program = plotter::load_program(gl);
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
         let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
         let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
                                                         degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 10.0);
 
-        Plotter3d {
+        let ambient_light = AmbientLight::new(&gl, 0.4, &vec3(1.0, 1.0, 1.0)).unwrap();
+        let mut directional_light = DirectionalLight::new(&gl, 1.0, &vec3(0.0, 1.0, 1.0), &vec3(2.0, 2.0, 2.0)).unwrap();
+
+        // directional_light.generate_shadow_map(&vec3(0.0, 0.0, 0.0), 10.0, 10.0, 10.0, 100, 100, &|projection: &three_d::Camera| {
+        //     plot.draw(&projection);
+        // });
+
+        let plotter = Plotter3d {
             plot,
-            program,
             expression,
             camera,
             screen_size,
-            projection
-        }
+            projection,
+            ambient_light,
+            directional_light
+        };
+
+        plotter
     }
 
     pub fn rotate(&mut self, delta: f32) {
         self.projection.rotate(delta, 0.0);
     }
+
+    fn draw(&self) {
+        self.plot.draw(&self.projection);
+    }
 }
 
-impl plotter::Plotter for Plotter3d {
+impl Plotter for Plotter3d {
 
     fn set_expression(&mut self, expression: Expression) {
         self.expression = expression
@@ -53,12 +66,14 @@ impl plotter::Plotter for Plotter3d {
         self.camera.position.1 += delta_y * self.camera.size / self.screen_size.1 as f32;
     }
 
-    fn draw(&self, gl: &Gl) {
+    fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline) {
 
-        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
+        renderer.geometry_pass(self.screen_size.0, self.screen_size.1, &|| {
+            self.draw();
+        }).unwrap();
 
-            self.plot.draw(&self.program, &self.projection);
-
+        Screen::write(&gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), None, &|| {
+            renderer.light_pass(&self.projection, Some(&self.ambient_light), &[&self.directional_light], &[], &[]).unwrap();
         }).unwrap();
 
     }
@@ -84,10 +99,7 @@ impl Camera {
 }
 
 struct Plot {
-    position_buffer: VertexBuffer,
-    position_buffer_size: u32,
-    grid_buffer: VertexBuffer,
-    grid_buffer_size: u32,
+    plot_mesh: Mesh,
     axis_buffer: VertexBuffer,
 }
 
@@ -96,107 +108,63 @@ impl Plot {
     fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera) -> Plot {
 
         // generate grid positions
-        let mut grid = vec![vec![(0.0, 0.0, 0.0); count]; count];
+        let mut positions: Vec<f32> = Vec::with_capacity(count * count * 3);
         let step = camera.size / count as f32;
         let mut x = camera.position.0 - camera.size/2.0;
-        for i in 0..count {
+        for _ in 0..count {
             let mut y = camera.position.1 - camera.size/2.0;
-            for j in 0..count {
+            for _ in 0..count {
                 let z = expression.eval((x, y));
                 let point = camera.to_normalized_coordinates((x,y,z));
-                grid[i][j] = (point.0, point.2, -point.1); // y and z axis are swapped in opengl
+                positions.push(point.0);
+                positions.push(point.2);
+                positions.push(-point.1);
                 y += step;
             }
             x += step;
         }
     
-        // generate triangles: each square in the grid has 2 triangles with 3 vertices in 3D coordinates
+        // generate triangles: each square in the grid has 2 triangles
         let n_triangles = (count-1)*(count-1)*2;
-        let n_vertices = n_triangles * 3;
-        let len = n_vertices*3; 
-        let mut triangles: Vec<f32> = Vec::with_capacity(len);
+        let n_vertices = n_triangles * 3; // 3 vertices per triangle
+        let mut triangles_indices: Vec<u32> = Vec::with_capacity(n_vertices);
+
+        let mut add_vertex = |pos: (usize, usize)| {
+            triangles_indices.push((count * pos.0 + pos.1) as u32);
+        };
     
         for i in 0..count-1 {
             for j in 0..count-1 {
-                let p1 = grid[i][j];
-                let p2 = grid[i][j+1];
-                let p3 = grid[i+1][j+1];
-                let p4 = grid[i+1][j];
-    
                 // first triangle
-                triangles.push(p1.0); triangles.push(p1.1); triangles.push(p1.2);
-                triangles.push(p2.0); triangles.push(p2.1); triangles.push(p2.2);
-                triangles.push(p3.0); triangles.push(p3.1); triangles.push(p3.2);
-    
+                add_vertex((i, j));
+                add_vertex((i, j+1));
+                add_vertex((i+1, j+1));
+
                 // second triangle
-                triangles.push(p1.0); triangles.push(p1.1); triangles.push(p1.2);
-                triangles.push(p3.0); triangles.push(p3.1); triangles.push(p3.2);
-                triangles.push(p4.0); triangles.push(p4.1); triangles.push(p4.2);
+                add_vertex((i+1, j));
+                add_vertex((i, j));
+                add_vertex((i+1, j+1));
             }
         }
 
-        let position_buffer = VertexBuffer::new_with_static_f32(&gl, &triangles).unwrap();
-        let position_buffer_size = n_vertices as u32;
-
-        // generate grid frame
-        let n_lines = 2*count*(count-1);
-        let n_vertices = n_lines * 2;
-        let len = n_vertices*3; 
-        let mut lines: Vec<f32> = Vec::with_capacity(len);
-    
-        // rows
-        for i in 0..count {
-            for j in 0..count-1 {
-                let p1 = grid[i][j];
-                let p2 = grid[i][j+1];
-
-                lines.push(p1.0); lines.push(p1.1); lines.push(p1.2);
-                lines.push(p2.0); lines.push(p2.1); lines.push(p2.2);
-            }
-        }
-
-        // columns
-        for i in 0..count {
-            for j in 0..count-1 {
-                let p1 = grid[j][i];
-                let p2 = grid[j+1][i];
-
-                lines.push(p1.0); lines.push(p1.1); lines.push(p1.2);
-                lines.push(p2.0); lines.push(p2.1); lines.push(p2.2);
-            }
-        }
-
-        let grid_buffer = VertexBuffer::new_with_static_f32(&gl, &lines).unwrap();
-        let grid_buffer_size = n_vertices as u32;
+        let cpu_mesh = CPUMesh::new_with_computed_normals(&triangles_indices, &positions ).unwrap();
+        let mut plot_mesh = cpu_mesh.to_mesh(gl).unwrap();
+        plot_mesh.diffuse_intensity = 0.2;
+        plot_mesh.specular_intensity = 0.4;
+        plot_mesh.specular_power = 20.0;
 
         let axis_points = Plot::generate_axis_lines();
         let axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
 
         Plot{
-            position_buffer,
-            position_buffer_size,
-            grid_buffer,
-            grid_buffer_size,
+            plot_mesh,
             axis_buffer
         }
     }
 
-    fn draw(&self, program: &Program, projection: &three_d::Camera) {
-        let world_view_projection = projection.get_projection() * projection.get_view();
-        program.add_uniform_mat4("worldViewProjectionMatrix", &world_view_projection).unwrap();
-
-        program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.3, 0.6, 0.3, 0.7)).unwrap();
-        program.draw_arrays_mode(self.position_buffer_size, consts::TRIANGLES);
-
-        program.use_attribute_vec3_float(&self.grid_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.2, 0.2, 0.2, 1.0)).unwrap();
-        program.draw_arrays_mode(self.grid_buffer_size, consts::LINES);
-
-        // draw axis
-        program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.5, 0.5, 0.5, 1.0)).unwrap();
-        program.draw_arrays_mode(6, consts::LINES);
+    fn draw(&self, projection: &three_d::Camera) {
+        let transformation = Mat4::identity();
+        self.plot_mesh.render(&transformation, projection);
     }
     
     fn generate_axis_lines() -> Vec<f32> {
