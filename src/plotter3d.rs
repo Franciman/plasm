@@ -11,7 +11,8 @@ pub struct Plotter3d {
     screen_size: (usize, usize),
     projection: three_d::Camera,
     ambient_light: AmbientLight,
-    directional_light: DirectionalLight
+    directional_light: DirectionalLight,
+    axis: Axis
 }
 
 impl Plotter3d {
@@ -22,12 +23,9 @@ impl Plotter3d {
         let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
                                                         degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 10.0);
 
-        let ambient_light = AmbientLight::new(&gl, 0.4, &vec3(1.0, 1.0, 1.0)).unwrap();
-        let mut directional_light = DirectionalLight::new(&gl, 1.0, &vec3(0.0, 1.0, 1.0), &vec3(2.0, 2.0, 2.0)).unwrap();
-
-        // directional_light.generate_shadow_map(&vec3(0.0, 0.0, 0.0), 10.0, 10.0, 10.0, 100, 100, &|projection: &three_d::Camera| {
-        //     plot.draw(&projection);
-        // });
+        let ambient_light = AmbientLight::new(&gl, 0.6, &vec3(1.0, 1.0, 1.0)).unwrap();
+        let directional_light = DirectionalLight::new(&gl, 1.0, &vec3(0.5, 1.0, 1.0), &vec3(3.0, 0.0, 3.0)).unwrap();
+        let axis = Axis::new(gl);
 
         let plotter = Plotter3d {
             plot,
@@ -36,7 +34,8 @@ impl Plotter3d {
             screen_size,
             projection,
             ambient_light,
-            directional_light
+            directional_light,
+            axis
         };
 
         plotter
@@ -44,10 +43,6 @@ impl Plotter3d {
 
     pub fn rotate(&mut self, delta: f32) {
         self.projection.rotate(delta, 0.0);
-    }
-
-    fn draw(&self) {
-        self.plot.draw(&self.projection);
     }
 }
 
@@ -69,7 +64,8 @@ impl Plotter for Plotter3d {
     fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline) {
 
         renderer.geometry_pass(self.screen_size.0, self.screen_size.1, &|| {
-            self.draw();
+            self.plot.render(&self.projection);
+            self.axis.render(&self.projection);
         }).unwrap();
 
         Screen::write(&gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), None, &|| {
@@ -99,8 +95,7 @@ impl Camera {
 }
 
 struct Plot {
-    plot_mesh: Mesh,
-    axis_buffer: VertexBuffer,
+    plot_mesh: Mesh
 }
 
 impl Plot {
@@ -152,27 +147,42 @@ impl Plot {
         plot_mesh.diffuse_intensity = 0.2;
         plot_mesh.specular_intensity = 0.4;
         plot_mesh.specular_power = 20.0;
+        plot_mesh.color = vec3(0.6, 0.6, 1.0);
 
-        let axis_points = Plot::generate_axis_lines();
-        let axis_buffer = VertexBuffer::new_with_static_f32(&gl, &axis_points).unwrap();
 
-        Plot{
-            plot_mesh,
-            axis_buffer
+        Plot {
+            plot_mesh
         }
     }
 
-    fn draw(&self, projection: &three_d::Camera) {
+    fn render(&self, projection: &three_d::Camera) {
         let transformation = Mat4::identity();
         self.plot_mesh.render(&transformation, projection);
     }
-    
-    fn generate_axis_lines() -> Vec<f32> {
-        vec![-1.0, 0.0, 0.0,
-            1.0, 0.0, 0.0,
-            0.0, -1.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, -1.0,
-            0.0, 0.0, 1.0]
+}
+
+struct Axis {
+    axis: Edges
+}
+
+impl Axis {
+    fn new(gl: &Gl) -> Axis {
+        let positions = vec![-1.0, 0.001, 0.0,
+                            1.0, 0.0, 0.0,
+                            0.0, -1.0, 0.0,
+                            0.0, 1.0, 0.0,
+                            0.0, 0.0, -1.0,
+                            0.0, 0.0, 1.0];
+
+        let indices = vec![2,3,3,4,5,5,0,1,1];
+
+        Axis {
+            axis: Edges::new(gl, &indices, &positions, 0.007)
+        }
+    }
+
+    fn render(&self, camera: &three_d::Camera) {
+        let transformation = Mat4::identity();
+        self.axis.render(&transformation, camera);
     }
 }
