@@ -45,24 +45,28 @@ impl Plotter3d {
         self.projection.rotate(delta, 0.0);
     }
 
-    pub fn update_view(&mut self) {
-        self.plot.update_positions(&self.expression, RESOLUTION, &self.camera);
-    }
 }
 
 impl Plotter for Plotter3d {
 
+    fn update_view(&mut self) {
+        self.plot.update_positions(&self.expression, RESOLUTION, &self.camera);
+    }
+
     fn set_expression(&mut self, expression: Expression) {
-        self.expression = expression
+        self.expression = expression;
+        self.update_view();
     }
 
     fn zoom(&mut self, delta: f32) {
         self.camera.size *= (1.01 as f32).powf(delta);
+        self.update_view();
     }
 
     fn translate(&mut self, delta_x: f32, delta_y: f32) {
         self.camera.position.0 += delta_x * self.camera.size / self.screen_size.0 as f32;
         self.camera.position.1 += delta_y * self.camera.size / self.screen_size.1 as f32;
+        self.update_view();
     }
 
     fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline) {
