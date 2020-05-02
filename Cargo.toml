@@ -9,7 +9,7 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-three-d = { path = "../three-d" }
+three-d = { git = "https://github.com/frankplus/three-d" }
 log = "0.4"
 wasm-bindgen = "0.2"
 console_error_panic_hook = "0.1"

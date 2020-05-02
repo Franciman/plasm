@@ -95,7 +95,8 @@ impl Camera {
 }
 
 struct Plot {
-    plot_mesh: Mesh
+    plot_mesh: Mesh,
+    grid: Edges
 }
 
 impl Plot {
@@ -122,27 +123,27 @@ impl Plot {
         // generate triangles: each square in the grid has 2 triangles
         let n_triangles = (count-1)*(count-1)*2;
         let n_vertices = n_triangles * 3; // 3 vertices per triangle
-        let mut triangles_indices: Vec<u32> = Vec::with_capacity(n_vertices);
+        let mut indices: Vec<u32> = Vec::with_capacity(n_vertices);
 
-        let mut add_vertex = |pos: (usize, usize)| {
-            triangles_indices.push((count * pos.0 + pos.1) as u32);
+        let to_vec_index = |pos: (usize, usize)| {
+            (count * pos.0 + pos.1) as u32
         };
     
         for i in 0..count-1 {
             for j in 0..count-1 {
                 // first triangle
-                add_vertex((i, j));
-                add_vertex((i, j+1));
-                add_vertex((i+1, j+1));
+                indices.push(to_vec_index((i, j)));
+                indices.push(to_vec_index((i, j+1)));
+                indices.push(to_vec_index((i+1, j+1)));
 
                 // second triangle
-                add_vertex((i+1, j));
-                add_vertex((i, j));
-                add_vertex((i+1, j+1));
+                indices.push(to_vec_index((i+1, j)));
+                indices.push(to_vec_index((i, j)));
+                indices.push(to_vec_index((i+1, j+1)));
             }
         }
 
-        let cpu_mesh = CPUMesh::new_with_computed_normals(&triangles_indices, &positions ).unwrap();
+        let cpu_mesh = CPUMesh::new_with_computed_normals(&indices, &positions).unwrap();
         let mut plot_mesh = cpu_mesh.to_mesh(gl).unwrap();
         plot_mesh.diffuse_intensity = 0.2;
         plot_mesh.specular_intensity = 0.4;
@@ -150,14 +151,35 @@ impl Plot {
         plot_mesh.color = vec3(0.6, 0.6, 1.0);
 
 
+        // generate grid wireframe
+        let n_lines = 2*count*(count-1);
+        let n_vertices = n_lines * 3;
+        let mut indices: Vec<u32> = Vec::with_capacity(n_vertices);
+        for i in (0..count).step_by(2) {
+            for j in (0..count-2).step_by(2) {
+                indices.push(to_vec_index((i, j)));
+                indices.push(to_vec_index((i, j+2)));
+                indices.push(to_vec_index((i, j+2)));
+
+                indices.push(to_vec_index((j, i)));
+                indices.push(to_vec_index((j+2, i)));
+                indices.push(to_vec_index((j+2, i)));
+            }
+        }
+
+        let mut grid = Edges::new(gl, &indices, &positions, 0.003);
+        grid.color = vec3(0.5, 0.5, 0.5);
+
         Plot {
-            plot_mesh
+            plot_mesh,
+            grid
         }
     }
 
     fn render(&self, projection: &three_d::Camera) {
         let transformation = Mat4::identity();
         self.plot_mesh.render(&transformation, projection);
+        self.grid.render(&transformation, projection);
     }
 }
 
