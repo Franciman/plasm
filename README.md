@@ -3,7 +3,7 @@ A FAST mathematical function plotter which builds to both desktop (Rust + OpenGL
 
 [**homepage**](https://plasm.acqua.team/)
 
-![alt text]( screenshots/3dplasm.gif )
+[![plasm.acqua.team](screenshots/3dplasm.gif)](https://plasm.acqua.team/)
 
 ## Build
 ### Desktop
