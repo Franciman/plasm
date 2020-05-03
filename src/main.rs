@@ -4,6 +4,7 @@ mod plotter;
 mod operator_descr;
 mod parser;
 mod expression;
+mod plot_generator2d;
 use three_d::*;
 use plotter::Plotter;
 use log::info;
