@@ -5,12 +5,6 @@ pub trait Plotter {
     fn set_expression(&mut self, expression: Expression);
     fn zoom(&mut self, delta: f32);
     fn translate(&mut self, delta_x: f32, delta_y: f32);
-    fn draw(&self, gl: &Gl);
-    fn update_view(&mut self, gl: &Gl);
-}
-
-pub fn load_program(gl: &Gl) -> Program {
-    Program::from_source(gl,
-        include_str!("../assets/shaders/color.vert"),
-        include_str!("../assets/shaders/color.frag")).unwrap()
+    fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline);
+    fn update_view(&mut self);
 }

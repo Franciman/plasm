@@ -27,11 +27,14 @@ fn start_main<F: 'static>(get_input: F) where
     let (screen_width, screen_height) = window.framebuffer_size();
     let gl = window.gl();
 
+    let mut renderer = DeferredPipeline::new(&gl).unwrap();
+
     let operator_table = operator_descr::default_operator_table();
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
     let mut plotter2d = plotter2d::Plotter2d::new(&gl, expression, (screen_width, screen_height));
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
     let mut plotter3d = plotter3d::Plotter3d::new(&gl, expression, (screen_width, screen_height));
+    
 
     // main loop
     let mut dragging = false;
@@ -49,12 +52,10 @@ fn start_main<F: 'static>(get_input: F) where
                     match &drawing_mode {
                         DrawingMode::Mode2d => {
                             plotter2d.set_expression(expr);
-                            plotter2d.update_view(&gl);
                             info!("Draw 2d function");
                         },
                         DrawingMode::Mode3d => {
                             plotter3d.set_expression(expr);
-                            plotter3d.update_view(&gl);
                             info!("Draw 3d function");
                         }
                     }
@@ -80,11 +81,9 @@ fn start_main<F: 'static>(get_input: F) where
                         match &drawing_mode {
                             DrawingMode::Mode2d => {
                                 plotter2d.translate(delta_x, delta_y);
-                                plotter2d.update_view(&gl);
                             },
                             DrawingMode::Mode3d => {
                                 plotter3d.translate(delta_x, delta_y);
-                                plotter3d.update_view(&gl);
                             }
                         }
                     }
@@ -93,11 +92,9 @@ fn start_main<F: 'static>(get_input: F) where
                     match &drawing_mode {
                         DrawingMode::Mode2d => {
                             plotter2d.zoom(*delta as f32);
-                            plotter2d.update_view(&gl);
                         },
                         DrawingMode::Mode3d => {
                             plotter3d.zoom(*delta as f32);
-                            plotter3d.update_view(&gl);
                         }
                     }
                 },
@@ -108,12 +105,12 @@ fn start_main<F: 'static>(get_input: F) where
         // draw
         match &drawing_mode {
             DrawingMode::Mode2d => {
-                plotter2d.draw(&gl);
+                plotter2d.render(&gl, &mut renderer);
             },
             DrawingMode::Mode3d => {
-                plotter3d.draw(&gl);
 
-                // rotate
+                plotter3d.render(&gl, &mut renderer);
+
                 let delta_rotation = frame_input.elapsed_time as f32 / 200.0;
                 plotter3d.rotate(delta_rotation);
             }
