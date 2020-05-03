@@ -19,12 +19,12 @@ impl Plotter3d {
     pub fn new(gl: &Gl, expression: Expression, screen_size: (usize, usize)) -> Plotter3d {
 
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
-        let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
         let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
                                                         degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 10.0);
 
-        let ambient_light = AmbientLight::new(&gl, 0.6, &vec3(1.0, 1.0, 1.0)).unwrap();
-        let directional_light = DirectionalLight::new(&gl, 1.0, &vec3(0.5, 1.0, 1.0), &vec3(3.0, 0.0, 3.0)).unwrap();
+        let ambient_light = AmbientLight::new(&gl, 0.7, &vec3(1.0, 1.0, 1.0)).unwrap();
+        let directional_light = DirectionalLight::new(&gl, 0.7, &vec3(0.5, 1.0, 1.0), &vec3(3.0, 0.0, 3.0)).unwrap();
+        let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
         let axis = Axis::new(gl);
 
         let plotter = Plotter3d {
@@ -100,6 +100,7 @@ impl Camera {
 
 struct Plot {
     plot_mesh: Mesh,
+    plot_indices: Vec<u32>,
     grid: Edges
 }
 
@@ -112,7 +113,7 @@ impl Plot {
         // generate triangles: each square in the grid has 2 triangles
         let n_triangles = (count-1)*(count-1)*2;
         let n_vertices = n_triangles * 3; // 3 vertices per triangle
-        let mut indices: Vec<u32> = Vec::with_capacity(n_vertices);
+        let mut plot_indices: Vec<u32> = Vec::with_capacity(n_vertices);
 
         let to_vec_index = |pos: (usize, usize)| {
             (count * pos.0 + pos.1) as u32
@@ -121,18 +122,18 @@ impl Plot {
         for i in 0..count-1 {
             for j in 0..count-1 {
                 // first triangle
-                indices.push(to_vec_index((i, j)));
-                indices.push(to_vec_index((i, j+1)));
-                indices.push(to_vec_index((i+1, j+1)));
+                plot_indices.push(to_vec_index((i, j)));
+                plot_indices.push(to_vec_index((i, j+1)));
+                plot_indices.push(to_vec_index((i+1, j+1)));
 
                 // second triangle
-                indices.push(to_vec_index((i+1, j)));
-                indices.push(to_vec_index((i, j)));
-                indices.push(to_vec_index((i+1, j+1)));
+                plot_indices.push(to_vec_index((i+1, j)));
+                plot_indices.push(to_vec_index((i, j)));
+                plot_indices.push(to_vec_index((i+1, j+1)));
             }
         }
 
-        let cpu_mesh = CPUMesh::new_with_computed_normals(&indices, &positions).unwrap();
+        let cpu_mesh = CPUMesh::new_with_computed_normals(&plot_indices, &positions).unwrap();
         let mut plot_mesh = cpu_mesh.to_mesh(gl).unwrap();
         plot_mesh.diffuse_intensity = 0.2;
         plot_mesh.specular_intensity = 0.4;
@@ -143,25 +144,26 @@ impl Plot {
         // generate grid wireframe
         let n_lines = 2*count*(count-1);
         let n_vertices = n_lines * 3;
-        let mut indices: Vec<u32> = Vec::with_capacity(n_vertices);
+        let mut grid_indices: Vec<u32> = Vec::with_capacity(n_vertices);
         let step = 1;
         for i in (0..count).step_by(step) {
             for j in (0..count-2).step_by(step) {
-                indices.push(to_vec_index((i, j)));
-                indices.push(to_vec_index((i, j+step)));
-                indices.push(to_vec_index((i, j+step)));
+                grid_indices.push(to_vec_index((i, j)));
+                grid_indices.push(to_vec_index((i, j+step)));
+                grid_indices.push(to_vec_index((i, j+step)));
 
-                indices.push(to_vec_index((j, i)));
-                indices.push(to_vec_index((j+step, i)));
-                indices.push(to_vec_index((j+step, i)));
+                grid_indices.push(to_vec_index((j, i)));
+                grid_indices.push(to_vec_index((j+step, i)));
+                grid_indices.push(to_vec_index((j+step, i)));
             }
         }
 
-        let mut grid = Edges::new(gl, &indices, &positions, 0.001);
+        let mut grid = Edges::new(gl, &grid_indices, &positions, 0.001);
         grid.color = vec3(0.6, 0.6, 0.6);
 
         Plot {
             plot_mesh,
+            plot_indices,
             grid
         }
     }
@@ -169,6 +171,7 @@ impl Plot {
     fn update_positions(&mut self, expression: &Expression, count: usize, camera: &Camera) {
         let positions = Plot::generate_grid_positions(expression, count, camera);
         self.plot_mesh.update_positions(&positions).unwrap();
+        self.plot_mesh.update_normals(&Plot::compute_normals(&self.plot_indices, &positions)).unwrap();
         self.grid.update_positions(&positions);
     }
 
@@ -197,6 +200,37 @@ impl Plot {
         }
 
         positions
+    }
+
+    fn compute_normals(indices: &[u32], positions: &[f32]) -> Vec<f32> {
+        let mut normals = vec![0.0f32; positions.len() * 3];
+        for face in 0..indices.len()/3 {
+            let index0 = indices[face*3] as usize;
+            let p0 = vec3(positions[index0*3], positions[index0*3+1], positions[index0*3+2]);
+            let index1 = indices[face*3 + 1] as usize;
+            let p1 = vec3(positions[index1*3], positions[index1*3+1], positions[index1*3+2]);
+            let index2 = indices[face*3 + 2] as usize;
+            let p2 = vec3(positions[index2*3], positions[index2*3+1], positions[index2*3+2]);
+    
+            let normal = (p1 - p0).cross(p2 - p0);
+            normals[index0*3] += normal.x;
+            normals[index0*3+1] += normal.y;
+            normals[index0*3+2] += normal.z;
+            normals[index1*3] += normal.x;
+            normals[index1*3+1] += normal.y;
+            normals[index1*3+2] += normal.z;
+            normals[index2*3] += normal.x;
+            normals[index2*3+1] += normal.y;
+            normals[index2*3+2] += normal.z;
+        }
+    
+        for i in 0..normals.len()/3 {
+            let normal = vec3(normals[3*i], normals[3*i+1], normals[3*i+2]).normalize();
+            normals[3*i] = normal.x;
+            normals[3*i+1] = normal.y;
+            normals[3*i+2] = normal.z;
+        }
+        normals
     }
 }
 

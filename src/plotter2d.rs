@@ -14,7 +14,10 @@ pub struct Plotter2d {
 impl Plotter2d {
     pub fn new(gl: &Gl, expression: Expression, screen_size: (usize, usize)) -> Plotter2d {
 
-        let program = plotter::load_program(gl);
+        let program = Program::from_source(gl,
+            include_str!("../assets/shaders/color.vert"),
+            include_str!("../assets/shaders/color.frag")).unwrap();
+                
         let camera = Camera {position: (0.0, 0.0), size: 10.0};
         let plot = Plot::new(gl, &expression, screen_size.0 as u32, &camera);
 
@@ -51,7 +54,7 @@ impl plotter::Plotter for Plotter2d {
     }
 
     fn render(&self, gl: &Gl, _renderer: &mut DeferredPipeline) {
-        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), Some(1.0), &|| {
+        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), None, &|| {
             self.plot.draw(&self.program);
         }).unwrap();
     }

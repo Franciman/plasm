@@ -8,9 +8,3 @@ pub trait Plotter {
     fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline);
     fn update_view(&mut self);
 }
-
-pub fn load_program(gl: &Gl) -> Program {
-    Program::from_source(gl,
-        include_str!("../assets/shaders/color.vert"),
-        include_str!("../assets/shaders/color.frag")).unwrap()
-}
