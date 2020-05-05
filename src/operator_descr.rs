@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
-use crate::expression::Number;
+use crate::expression::Operation;
+use crate::semantics::*;
 
-pub fn default_operator_table() -> OperatorTable {
-    let unary_ops = vec![
+pub fn default_operator_table() -> OperatorTable<f32> {
+    let unary_ops: Vec<UnaryOp<f32>> = vec![
         UnaryOp {
             symbol: "ln",
             semantics: |x| x.ln(),
@@ -54,7 +55,7 @@ pub fn default_operator_table() -> OperatorTable {
         },
     ];
 
-    let binary_ops = vec![
+    let binary_ops: Vec<BinaryOp<f32>> = vec![
         BinaryOp {
             symbol: "+",
             semantics: |x, y| x+y,
@@ -88,7 +89,7 @@ pub fn default_operator_table() -> OperatorTable {
         },
     ];
 
-    let consts = vec![
+    let consts: Vec<ConstantOp<f32>> = vec![
         ConstantOp {
             symbol: "pi",
             semantics: std::f32::consts::PI,
@@ -102,51 +103,21 @@ pub fn default_operator_table() -> OperatorTable {
     OperatorTable::new(unary_ops, binary_ops, consts)
 }
 
-// Associativity of a binary operator
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum Assoc {
-    Left,
-    Right,
-}
-
-// Precedence level of a binary operator
-type Prec = u32;
-
 // Description of an operator supported
 // For now we support three types of operators:
 // - Unary operators, are written in prefix form
 // - Binary operators, are written in infix form
 // - Constants,
-pub struct UnaryOp {
-    pub symbol: &'static str,
-    pub semantics: fn (Number) -> Number,
+pub struct OperatorTable<Number: Clone + From<f32>> {
+    unary_ops: HashMap<&'static str, UnaryOp<Number>>,
+    binary_ops: HashMap<&'static str, BinaryOp<Number>>,
+    const_ops: HashMap<&'static str, ConstantOp<Number>>,
 }
 
-pub struct BinaryOp {
-    pub symbol: &'static str,
-    pub assoc: Assoc,
-    pub prec: Prec,
-
-    pub semantics: fn (Number, Number) -> Number,
-}
-
-pub struct ConstantOp {
-    pub symbol: &'static str,
-
-    pub semantics: Number,
-}
-
-pub struct OperatorTable {
-    unary_ops: HashMap<&'static str, UnaryOp>,
-    binary_ops: HashMap<&'static str, BinaryOp>,
-    const_ops: HashMap<&'static str, ConstantOp>,
-}
-
-
-impl OperatorTable {
+impl<Number: Clone + From<f32>> OperatorTable<Number> {
     // panics if there is any duplicate symbol
     // TODO: Check that constants and unary symbols don't overlap
-    pub fn new(unary: Vec<UnaryOp>, binary: Vec<BinaryOp>, consts: Vec<ConstantOp>) -> OperatorTable {
+    pub fn new(unary: Vec<UnaryOp<Number>>, binary: Vec<BinaryOp<Number>>, consts: Vec<ConstantOp<Number>>) -> OperatorTable<Number> {
         let mut unary_table = HashMap::new();
         let mut binary_table = HashMap::new();
         let mut const_table = HashMap::new();
@@ -178,22 +149,38 @@ impl OperatorTable {
             const_ops: const_table,
         }
     }
+}
 
-    pub fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp> {
+impl<Number: Clone + From<f32>> Semantics for OperatorTable<Number> {
+    type Number = Number;
+
+    fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp<Number>> {
         self.unary_ops.get(symbol)
     }
 
-    pub fn lookup_binary(&self, symbol: &str) -> Option<&BinaryOp> {
+    fn lookup_binary(&self, symbol: &str) -> Option<&BinaryOp<Number>> {
         self.binary_ops.get(symbol)
     }
-    pub fn lookup_const(&self, symbol: &str) -> Option<&ConstantOp> {
+    fn lookup_const(&self, symbol: &str) -> Option<&ConstantOp<Number>> {
         self.const_ops.get(symbol)
     }
 
-    pub fn has_symbol(&self, symbol: &str) -> bool {
+    fn has_symbol(&self, symbol: &str) -> bool {
         self.unary_ops.contains_key(symbol) ||
         self.binary_ops.contains_key(symbol) ||
         self.const_ops.contains_key(symbol)
+    }
+
+    fn number(&self, num: f32) -> Operation<Number> {
+        Operation::Constant(Number::from(num))
+    }
+
+    fn xvar(&self) -> Operation<Number> {
+        Operation::Variable(|input| input.x)
+    }
+
+    fn yvar(&self) -> Operation<Number> {
+        Operation::Variable(|input| input.y)
     }
 }
 

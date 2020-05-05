@@ -1,14 +1,17 @@
 mod plotter3d;
 mod plotter2d;
 mod plotter;
+mod semantics;
 mod operator_descr;
 mod parser;
 mod expression;
+mod plot_generator2d;
 use three_d::*;
 use plotter::Plotter;
 use log::info;
 
 const DEFAULT_EXPR: &str = "sin(x)+sin(y)";
+const DEFAULT_MODE: DrawingMode = DrawingMode::Mode3d;
 
 enum DrawingMode {
     Mode2d,
@@ -39,7 +42,7 @@ fn start_main<F: 'static>(get_input: F) where
     // main loop
     let mut dragging = false;
     let mut old_input = String::from(DEFAULT_EXPR);
-    let mut drawing_mode = DrawingMode::Mode3d;
+    let mut drawing_mode = DEFAULT_MODE;
     window.render_loop(move |frame_input|
     {
         // read input
