@@ -11,7 +11,7 @@ use three_d::*;
 use plotter::Plotter;
 use log::info;
 
-const DEFAULT_EXPR: &str = "sin(x)";
+const DEFAULT_EXPR: &str = "1/(x^2 - 2)";
 const DEFAULT_MODE: DrawingMode = DrawingMode::Mode2d;
 
 enum DrawingMode {
@@ -34,7 +34,9 @@ fn start_main<F: 'static>(get_input: F) where
     let mut renderer = DeferredPipeline::new(&gl).unwrap();
 
     let operator_table = operator_tables::default_operator_table();
-    let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
+    let interval_arithmetic_operator_table = operator_tables::interval_arithmetic_operator_table();
+
+    let expression = parser::parse(DEFAULT_EXPR, &interval_arithmetic_operator_table).unwrap();
     let mut plotter2d = plotter2d::Plotter2d::new(&gl, expression, (screen_width, screen_height));
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
     let mut plotter3d = plotter3d::Plotter3d::new(&gl, expression, (screen_width, screen_height));
@@ -49,14 +51,27 @@ fn start_main<F: 'static>(get_input: F) where
         // read input
         let input = get_input();
         if input != old_input {
+
+            // determine if 2d function or 3d function
             let expression = parser::parse(&input, &operator_table);
             match expression {
                 Ok(expr) => {
                     drawing_mode = if expr.is_3d() {DrawingMode::Mode3d} else {DrawingMode::Mode2d};
                     match &drawing_mode {
                         DrawingMode::Mode2d => {
-                            plotter2d.set_expression(expr);
-                            info!("Draw 2d function");
+
+                            // draw as 2d function parse again using interval arithmetic
+                            let expression = parser::parse(&input, &interval_arithmetic_operator_table);
+                            match expression {
+                                Ok(expr) => {
+                                    plotter2d.set_expression(expr);
+                                    info!("Draw 2d function");
+                                }
+                                Err(_) => {
+                                    info!("Could not parse input function");
+                                }
+                            }
+
                         },
                         DrawingMode::Mode3d => {
                             plotter3d.set_expression(expr);
@@ -68,6 +83,7 @@ fn start_main<F: 'static>(get_input: F) where
                     info!("Could not parse input function");
                 }
             }
+
             old_input = input;
         }
 

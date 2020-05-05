@@ -45,17 +45,16 @@ impl Plotter3d {
         self.projection.rotate(delta, 0.0);
     }
 
+    pub fn set_expression(&mut self, expression: Expression<f64>) {
+        self.expression = expression;
+        self.update_view();
+    }
 }
 
 impl Plotter for Plotter3d {
 
     fn update_view(&mut self) {
         self.plot.update_positions(&self.expression, RESOLUTION, &self.camera);
-    }
-
-    fn set_expression(&mut self, expression: Expression<f64>) {
-        self.expression = expression;
-        self.update_view();
     }
 
     fn zoom(&mut self, delta: f32) {
