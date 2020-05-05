@@ -1,23 +1,22 @@
 use crate::expression::Expression;
-use crate::expression::Number;
 
 // This struct contains info
 // about which part of the plot to draw and about the zoom
 pub struct DisplayInfo {
-    pub x_start: Number,
-    pub x_end: Number,
+    pub x_start: f32,
+    pub x_end: f32,
     // number of steps
     pub resolution: u32,
 }
 
 pub struct Segment {
-    pub start_point: (Number, Number),
-    pub end_point: (Number, Number),
+    pub start_point: (f32, f32),
+    pub end_point: (f32, f32),
 }
 
 // Given the DisplayInfo, it returns an approximation of the plot
 // consistings as a list of segments that should be displayed
-pub fn generate_2dplot(expression: &Expression, display_info: DisplayInfo) -> Vec<Segment> {
+pub fn generate_2dplot(expression: &Expression<f32>, display_info: DisplayInfo) -> Vec<Segment> {
     let mut segments = Vec::new();
 
     let step = (display_info.x_end - display_info.x_start) / (display_info.resolution as f32);

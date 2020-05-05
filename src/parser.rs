@@ -2,29 +2,27 @@ use std::str::Chars;
 use std::iter::Peekable;
 use std::result::Result;
 
-use crate::operator_descr::OperatorTable;
-use crate::operator_descr::BinaryOp;
-use crate::operator_descr::Assoc;
-use crate::expression::{Number, Operation, Expression};
+use crate::expression::{Operation, Expression};
+use crate::semantics::*;
 
 enum Token {
     Operator(String),
     XVar,
     YVar,
-    Number(Number),
+    Number(f32),
     LeftParen,
     RightParen,
     Eof,
     Error(&'static str), // Error with explaination of the error
 }
 
-struct Tokenizer<'s> {
+struct Tokenizer<'s, S: Semantics> {
     input: Peekable<Chars<'s>>,
-    table: &'s OperatorTable
+    table: &'s S,
 }
 
-impl<'s> Tokenizer<'s> {
-    fn new(input: &'s str, table: &'s OperatorTable) -> Tokenizer<'s> {
+impl<'s, S: Semantics> Tokenizer<'s, S> {
+    fn new(input: &'s str, table: &'s S) -> Tokenizer<'s, S> {
         return Tokenizer {
             input: input.chars().peekable(),
             table: table,
@@ -38,14 +36,14 @@ impl<'s> Tokenizer<'s> {
     }
 
     // Returns the lexed number and the number of digits it is composed of
-    fn read_integer(&mut self) -> (Number, u32) {
+    fn read_integer(&mut self) -> (f32, u32) {
         let mut digits = 0;
-        let mut number: Number = 0.0;
+        let mut number = 0.0;
 
         while self.input.peek().map_or(false, |c| c.is_digit(10)) {
             digits += 1;
             number *= 10.0;
-            number += self.input.next().unwrap().to_digit(10).unwrap() as Number;
+            number += self.input.next().unwrap().to_digit(10).unwrap() as f32;
         }
 
         return (number, digits)
@@ -65,7 +63,7 @@ impl<'s> Tokenizer<'s> {
 
                 // Interpret the decimal part correctly, now it is an integer,
                 // but we want to divide it by 10^{digits}
-                let decimal_part_magnitude = (10 as i32).pow(digits) as Number;
+                let decimal_part_magnitude = (10 as i32).pow(digits) as f32;
                 let decimal_part = decimal_digits / decimal_part_magnitude;
 
                 return Token::Number(integer_part + decimal_part);
@@ -136,18 +134,18 @@ impl<'s> Tokenizer<'s> {
 // Parses an input string and produces
 // an Expression, that represents the semantics of the parsed expression
 // [it is basically the expression in postfix order]
-struct Parser<'s> {
-    tokenizer: Tokenizer<'s>,
-    table: &'s OperatorTable,
+struct Parser<'s, S: Semantics> {
+    tokenizer: Tokenizer<'s, S>,
+    table: &'s S,
     look_ahead: Token,
 
     // Internal state representing the current expression
     // that is being parsed
-    operations: Vec<Operation>,
+    operations: Vec<Operation<S::Number>>,
     is_3d: bool,
 }
 
-pub fn parse(input: & str, table: & OperatorTable) -> Result<Expression, &'static str>  {
+pub fn parse<S: Semantics>(input: & str, table: &S) -> Result<Expression<S::Number>, &'static str>  {
     let mut parser = Parser {
         tokenizer: Tokenizer::new(input, table),
         table: table,
@@ -165,7 +163,7 @@ pub fn parse(input: & str, table: & OperatorTable) -> Result<Expression, &'stati
     }
 }
 
-impl<'s> Parser<'s> {
+impl<'s, S: Semantics> Parser<'s, S> {
     fn parse_expr(&mut self, curr_prec: u32) -> Result<(), &'static str> {
         self.parse_prefix()?;
 
@@ -174,7 +172,7 @@ impl<'s> Parser<'s> {
                 Token::Eof => return Ok(()),
                 Token::RightParen => return Ok(()),
                 Token::Operator(name) => {
-                    let op: &BinaryOp;
+                    let op: &S::BinaryOp;
                     let is_implicit: bool;
                     match self.table.lookup_binary(name) {
                         None => {
@@ -189,8 +187,8 @@ impl<'s> Parser<'s> {
                             is_implicit = false;
                         }
                     }
-                    let curr_op_binds_tighter = curr_prec < op.prec
-                                              || (curr_prec == op.prec && op.assoc == Assoc::Right);
+                    let curr_op_binds_tighter = curr_prec < op.prec()
+                                              || (curr_prec == op.prec() && op.assoc() == Assoc::Right);
                     if curr_op_binds_tighter {
                         // This operator has higher precedence,
                         // so it binds tighter
@@ -208,10 +206,10 @@ impl<'s> Parser<'s> {
                     // and insert an implicit product here
 
                     // We are sure * is a binary operator
-                    let op: &BinaryOp = self.table.lookup_binary("*").unwrap();
+                    let op: &S::BinaryOp = self.table.lookup_binary("*").unwrap();
 
-                    let curr_op_binds_tighter = curr_prec < op.prec
-                                              || (curr_prec == op.prec && op.assoc == Assoc::Right);
+                    let curr_op_binds_tighter = curr_prec < op.prec()
+                                              || (curr_prec == op.prec() && op.assoc() == Assoc::Right);
                     if curr_op_binds_tighter {
                         // This operator has higher precedence,
                         // so it binds tighter
@@ -228,12 +226,12 @@ impl<'s> Parser<'s> {
     }
 
     // If is_implicit_op true, then we don't have to consume next token
-    fn parse_operation_rhs(&mut self, op: &BinaryOp, is_implicit_op: bool) -> Result<(), &'static str> {
+    fn parse_operation_rhs(&mut self, op: &S::BinaryOp, is_implicit_op: bool) -> Result<(), &'static str> {
         if !is_implicit_op {
             self.next_token();
         }
-        self.parse_expr(op.prec)?;
-        self.operations.push(Operation::BinaryOperation(op.semantics));
+        self.parse_expr(op.prec())?;
+        self.operations.push(op.semantics());
         Ok(())
     }
 
@@ -246,13 +244,13 @@ impl<'s> Parser<'s> {
                     (None, None) => Err("Unexpected prefix"),
                     (Some(c), None) => {
                         self.next_token();
-                        self.operations.push(Operation::Constant(c.semantics));
+                        self.operations.push(c.semantics());
                         Ok(())
                     },
                     (None, Some(op)) => {
                         self.next_token();
                         self.parse_prefix()?;
-                        self.operations.push(Operation::UnaryOperation(op.semantics));
+                        self.operations.push(op.semantics());
                         Ok(())
                     },
                     (_,_) => Err("Ambiguous operator name")
@@ -260,17 +258,17 @@ impl<'s> Parser<'s> {
             }
             Token::Number(n) => {
                 self.next_token();
-                self.operations.push(Operation::Constant(n));
+                self.operations.push(self.table.number(n));
                 Ok(())
             },
             Token::XVar => {
                 self.next_token();
-                self.operations.push(Operation::Variable(|input| input.0));
+                self.operations.push(self.table.xvar());
                 Ok(())
             },
             Token::YVar => {
                 self.next_token();
-                self.operations.push(Operation::Variable(|input| input.1));
+                self.operations.push(self.table.yvar());
                 self.is_3d = true;
                 Ok(())
             },

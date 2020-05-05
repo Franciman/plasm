@@ -6,7 +6,7 @@ const RESOLUTION: usize = 50;
 
 pub struct Plotter3d {
     plot: Plot,
-    expression: Expression,
+    expression: Expression<f32>,
     camera: Camera,
     screen_size: (usize, usize),
     projection: three_d::Camera,
@@ -16,7 +16,7 @@ pub struct Plotter3d {
 }
 
 impl Plotter3d {
-    pub fn new(gl: &Gl, expression: Expression, screen_size: (usize, usize)) -> Plotter3d {
+    pub fn new(gl: &Gl, expression: Expression<f32>, screen_size: (usize, usize)) -> Plotter3d {
 
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
         let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
@@ -53,7 +53,7 @@ impl Plotter for Plotter3d {
         self.plot.update_positions(&self.expression, RESOLUTION, &self.camera);
     }
 
-    fn set_expression(&mut self, expression: Expression) {
+    fn set_expression(&mut self, expression: Expression<f32>) {
         self.expression = expression;
         self.update_view();
     }
@@ -106,7 +106,7 @@ struct Plot {
 
 impl Plot {
 
-    fn new(gl: &Gl, expression: &Expression, count: usize, camera: &Camera) -> Plot {
+    fn new(gl: &Gl, expression: &Expression<f32>, count: usize, camera: &Camera) -> Plot {
 
         let positions = Plot::generate_grid_positions(expression, count, camera);
     
@@ -168,7 +168,7 @@ impl Plot {
         }
     }
 
-    fn update_positions(&mut self, expression: &Expression, count: usize, camera: &Camera) {
+    fn update_positions(&mut self, expression: &Expression<f32>, count: usize, camera: &Camera) {
         let positions = Plot::generate_grid_positions(expression, count, camera);
         self.plot_mesh.update_positions(&positions).unwrap();
         self.plot_mesh.update_normals(&Plot::compute_normals(&self.plot_indices, &positions)).unwrap();
@@ -181,7 +181,7 @@ impl Plot {
         self.grid.render(&transformation, projection);
     }
 
-    fn generate_grid_positions(expression: &Expression, count: usize, camera: &Camera) ->  Vec<f32> {
+    fn generate_grid_positions(expression: &Expression<f32>, count: usize, camera: &Camera) ->  Vec<f32> {
         // generate grid positions
         let mut positions: Vec<f32> = Vec::with_capacity(count * count * 3);
         let step = camera.size / count as f32;

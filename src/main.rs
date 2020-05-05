@@ -1,6 +1,7 @@
 mod plotter3d;
 mod plotter2d;
 mod plotter;
+mod semantics;
 mod operator_descr;
 mod parser;
 mod expression;

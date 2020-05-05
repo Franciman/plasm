@@ -1,8 +1,7 @@
 // Here we define the semantic of an expression
-pub type Number = f32;
 pub type InputSpace = (f32, f32);
 
-pub enum Operation {
+pub enum Operation<Number: Clone> {
     BinaryOperation(fn (Number, Number) -> Number),
     UnaryOperation(fn (Number) -> Number),
     Constant(Number),
@@ -11,15 +10,15 @@ pub enum Operation {
 
 // We represent an expression in its postfix form
 // it is a program to be run in a stack machine
-pub struct Expression {
-    ops: Vec<Operation>,
+pub struct Expression<Number: Clone> {
+    ops: Vec<Operation<Number>>,
     // This flag indicates the need
     // to plot the function in the 3d space
     is_3d: bool,
 }
 
-impl Expression {
-    pub fn new(ops: Vec<Operation>, is_3d: bool) -> Expression {
+impl<Number: Clone> Expression<Number> {
+    pub fn new(ops: Vec<Operation<Number>>, is_3d: bool) -> Expression<Number> {
         Expression {
             ops: ops,
             is_3d: is_3d,
@@ -35,7 +34,7 @@ impl Expression {
 
         for op in self.ops.iter() {
             match op {
-                Operation::Constant(c) => stack.push(*c),
+                Operation::Constant(c) => stack.push(c.clone()),
                 Operation::Variable(f) => stack.push(f(input)),
                 Operation::UnaryOperation(f) => {
                     let arg = stack.pop().unwrap();
