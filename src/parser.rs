@@ -9,7 +9,7 @@ enum Token {
     Operator(String),
     XVar,
     YVar,
-    Number(f32),
+    Number(f64),
     LeftParen,
     RightParen,
     Eof,
@@ -36,14 +36,14 @@ impl<'s, S: Semantics> Tokenizer<'s, S> {
     }
 
     // Returns the lexed number and the number of digits it is composed of
-    fn read_integer(&mut self) -> (f32, u32) {
+    fn read_integer(&mut self) -> (f64, u32) {
         let mut digits = 0;
         let mut number = 0.0;
 
         while self.input.peek().map_or(false, |c| c.is_digit(10)) {
             digits += 1;
             number *= 10.0;
-            number += self.input.next().unwrap().to_digit(10).unwrap() as f32;
+            number += self.input.next().unwrap().to_digit(10).unwrap() as f64;
         }
 
         return (number, digits)
@@ -63,7 +63,7 @@ impl<'s, S: Semantics> Tokenizer<'s, S> {
 
                 // Interpret the decimal part correctly, now it is an integer,
                 // but we want to divide it by 10^{digits}
-                let decimal_part_magnitude = (10 as i32).pow(digits) as f32;
+                let decimal_part_magnitude = (10 as i32).pow(digits) as f64;
                 let decimal_part = decimal_digits / decimal_part_magnitude;
 
                 return Token::Number(integer_part + decimal_part);

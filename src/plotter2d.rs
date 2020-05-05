@@ -7,13 +7,13 @@ use crate::plot_generator2d;
 pub struct Plotter2d {
     plot: Plot,
     program: Program,
-    expression: Expression<f32>,
+    expression: Expression<f64>,
     camera: Camera,
     screen_size: (usize, usize)
 }
 
 impl Plotter2d {
-    pub fn new(gl: &Gl, expression: Expression<f32>, screen_size: (usize, usize)) -> Plotter2d {
+    pub fn new(gl: &Gl, expression: Expression<f64>, screen_size: (usize, usize)) -> Plotter2d {
 
         let program = Program::from_source(gl,
             include_str!("../assets/shaders/color.vert"),
@@ -38,7 +38,7 @@ impl plotter::Plotter for Plotter2d {
         self.plot.update_positions(&self.expression, self.screen_size.0 as u32, &self.camera)
     }
 
-    fn set_expression(&mut self, expression: Expression<f32>) {
+    fn set_expression(&mut self, expression: Expression<f64>) {
         self.expression = expression;
         self.update_view();
     }
@@ -83,7 +83,7 @@ struct Plot {
 
 impl Plot {
 
-    fn new(gl: &Gl, expression: &Expression<f32>, resolution: u32, camera: &Camera) -> Plot {
+    fn new(gl: &Gl, expression: &Expression<f64>, resolution: u32, camera: &Camera) -> Plot {
         let positions = Plot::generate_positions(expression, resolution, camera);
         let axis_points = Plot::generate_axis_lines(camera);
 
@@ -98,7 +98,7 @@ impl Plot {
         }
     }
 
-    fn update_positions(&mut self, expression: &Expression<f32>, resolution: u32, camera: &Camera) {
+    fn update_positions(&mut self, expression: &Expression<f64>, resolution: u32, camera: &Camera) {
         let positions = Plot::generate_positions(expression, resolution, camera);
         let axis_positions = Plot::generate_axis_lines(camera);
         
@@ -120,7 +120,7 @@ impl Plot {
         program.draw_arrays_mode(4, consts::LINES);
     }
 
-    fn generate_positions(expression: &Expression<f32>, resolution: u32, camera: &Camera) -> Vec<f32> {
+    fn generate_positions(expression: &Expression<f64>, resolution: u32, camera: &Camera) -> Vec<f32> {
 
         let display_info = plot_generator2d::DisplayInfo {
             x_start: camera.position.0 - camera.size/2.0,

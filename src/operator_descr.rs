@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use crate::expression::Operation;
 use crate::semantics::*;
 
-pub fn default_operator_table() -> OperatorTable<f32> {
-    let unary_ops: Vec<UnaryOp<f32>> = vec![
+pub fn default_operator_table() -> OperatorTable<f64> {
+    let unary_ops: Vec<UnaryOp<f64>> = vec![
         UnaryOp {
             symbol: "ln",
             semantics: |x| x.ln(),
@@ -55,7 +55,7 @@ pub fn default_operator_table() -> OperatorTable<f32> {
         },
     ];
 
-    let binary_ops: Vec<BinaryOp<f32>> = vec![
+    let binary_ops: Vec<BinaryOp<f64>> = vec![
         BinaryOp {
             symbol: "+",
             semantics: |x, y| x+y,
@@ -89,14 +89,14 @@ pub fn default_operator_table() -> OperatorTable<f32> {
         },
     ];
 
-    let consts: Vec<ConstantOp<f32>> = vec![
+    let consts: Vec<ConstantOp<f64>> = vec![
         ConstantOp {
             symbol: "pi",
-            semantics: std::f32::consts::PI,
+            semantics: std::f64::consts::PI,
         },
         ConstantOp {
             symbol: "e",
-            semantics: std::f32::consts::E,
+            semantics: std::f64::consts::E,
         },
     ];
 
@@ -108,13 +108,13 @@ pub fn default_operator_table() -> OperatorTable<f32> {
 // - Unary operators, are written in prefix form
 // - Binary operators, are written in infix form
 // - Constants,
-pub struct OperatorTable<Number: Clone + From<f32>> {
+pub struct OperatorTable<Number: Clone + From<f64>> {
     unary_ops: HashMap<&'static str, UnaryOp<Number>>,
     binary_ops: HashMap<&'static str, BinaryOp<Number>>,
     const_ops: HashMap<&'static str, ConstantOp<Number>>,
 }
 
-impl<Number: Clone + From<f32>> OperatorTable<Number> {
+impl<Number: Clone + From<f64>> OperatorTable<Number> {
     // panics if there is any duplicate symbol
     // TODO: Check that constants and unary symbols don't overlap
     pub fn new(unary: Vec<UnaryOp<Number>>, binary: Vec<BinaryOp<Number>>, consts: Vec<ConstantOp<Number>>) -> OperatorTable<Number> {
@@ -151,7 +151,7 @@ impl<Number: Clone + From<f32>> OperatorTable<Number> {
     }
 }
 
-impl<Number: Clone + From<f32>> Semantics for OperatorTable<Number> {
+impl<Number: Clone + From<f64>> Semantics for OperatorTable<Number> {
     type Number = Number;
 
     fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp<Number>> {
@@ -171,7 +171,7 @@ impl<Number: Clone + From<f32>> Semantics for OperatorTable<Number> {
         self.const_ops.contains_key(symbol)
     }
 
-    fn number(&self, num: f32) -> Operation<Number> {
+    fn number(&self, num: f64) -> Operation<Number> {
         Operation::Constant(Number::from(num))
     }
 
