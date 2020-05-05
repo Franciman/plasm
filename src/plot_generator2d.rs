@@ -23,10 +23,10 @@ pub fn generate_2dplot(expression: &Expression<f32>, display_info: DisplayInfo) 
 
     let mut x_0 = display_info.x_start;
     while x_0 < display_info.x_end {
-        let y_0 = expression.eval((x_0, 0.0));
+        let y_0 = expression.eval_2d(x_0);
 
         let x_1 = x_0 + step;
-        let y_1 = expression.eval((x_1, 0.0));
+        let y_1 = expression.eval_2d(x_1);
 
         segments.push(Segment {
             start_point: (x_0, y_0),

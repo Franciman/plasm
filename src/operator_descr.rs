@@ -1,11 +1,10 @@
 use std::collections::HashMap;
-use std::marker::PhantomData;
 
 use crate::expression::Operation;
 use crate::semantics::*;
 
-pub fn default_operator_table() -> OperatorTable<PointStyle> {
-    let unary_ops = vec![
+pub fn default_operator_table() -> OperatorTable<f32> {
+    let unary_ops: Vec<UnaryOp<f32>> = vec![
         UnaryOp {
             symbol: "ln",
             semantics: |x| x.ln(),
@@ -56,7 +55,7 @@ pub fn default_operator_table() -> OperatorTable<PointStyle> {
         },
     ];
 
-    let binary_ops = vec![
+    let binary_ops: Vec<BinaryOp<f32>> = vec![
         BinaryOp {
             symbol: "+",
             semantics: |x, y| x+y,
@@ -90,7 +89,7 @@ pub fn default_operator_table() -> OperatorTable<PointStyle> {
         },
     ];
 
-    let consts = vec![
+    let consts: Vec<ConstantOp<f32>> = vec![
         ConstantOp {
             symbol: "pi",
             semantics: std::f32::consts::PI,
@@ -109,78 +108,16 @@ pub fn default_operator_table() -> OperatorTable<PointStyle> {
 // - Unary operators, are written in prefix form
 // - Binary operators, are written in infix form
 // - Constants,
-pub struct UnaryOp {
-    pub symbol: &'static str,
-    pub semantics: fn (f32) -> f32,
+pub struct OperatorTable<Number: Clone + From<f32>> {
+    unary_ops: HashMap<&'static str, UnaryOp<Number>>,
+    binary_ops: HashMap<&'static str, BinaryOp<Number>>,
+    const_ops: HashMap<&'static str, ConstantOp<Number>>,
 }
 
-impl UnaryOpTrait<f32> for UnaryOp {
-    fn symbol(&self) -> &'static str {
-        self.symbol
-    }
-    fn semantics(&self) -> Operation<f32> {
-        Operation::UnaryOperation(self.semantics)
-    }
-}
-
-pub struct BinaryOp {
-    pub symbol: &'static str,
-    pub assoc: Assoc,
-    pub prec: Prec,
-
-    pub semantics: fn (f32, f32) -> f32,
-}
-
-impl BinaryOpTrait<f32> for BinaryOp {
-    fn symbol(&self) -> &'static str {
-        self.symbol
-    }
-
-    fn semantics(&self) -> Operation<f32> {
-        Operation::BinaryOperation(self.semantics)
-    }
-
-    fn assoc(&self) -> Assoc {
-        self.assoc
-    }
-
-    fn prec(&self) -> Prec {
-        self.prec
-    }
-}
-
-pub struct ConstantOp {
-    pub symbol: &'static str,
-
-    pub semantics: f32,
-}
-
-impl ConstantTrait<f32> for ConstantOp {
-    fn symbol(&self) -> &'static str {
-        self.symbol
-    }
-
-    fn semantics(&self) -> Operation<f32> {
-        Operation::Constant(self.semantics)
-    }
-}
-
-pub struct OperatorTable<SemanticsStyle> {
-    unary_ops: HashMap<&'static str, UnaryOp>,
-    binary_ops: HashMap<&'static str, BinaryOp>,
-    const_ops: HashMap<&'static str, ConstantOp>,
-
-    // This just suppresses the error that the generic param is not used
-    _marker: PhantomData<SemanticsStyle>,
-}
-
-pub struct PointStyle { }
-pub struct IntervalStyle { }
-
-impl<SemanticsStyle> OperatorTable<SemanticsStyle> {
+impl<Number: Clone + From<f32>> OperatorTable<Number> {
     // panics if there is any duplicate symbol
     // TODO: Check that constants and unary symbols don't overlap
-    pub fn new(unary: Vec<UnaryOp>, binary: Vec<BinaryOp>, consts: Vec<ConstantOp>) -> OperatorTable<SemanticsStyle> {
+    pub fn new(unary: Vec<UnaryOp<Number>>, binary: Vec<BinaryOp<Number>>, consts: Vec<ConstantOp<Number>>) -> OperatorTable<Number> {
         let mut unary_table = HashMap::new();
         let mut binary_table = HashMap::new();
         let mut const_table = HashMap::new();
@@ -210,26 +147,21 @@ impl<SemanticsStyle> OperatorTable<SemanticsStyle> {
             unary_ops: unary_table,
             binary_ops: binary_table,
             const_ops: const_table,
-
-            _marker: PhantomData,
         }
     }
 }
 
-impl Semantics for OperatorTable<PointStyle> {
-    type Number = f32;
-    type UnaryOp = UnaryOp;
-    type BinaryOp = BinaryOp;
-    type Constant = ConstantOp;
+impl<Number: Clone + From<f32>> Semantics for OperatorTable<Number> {
+    type Number = Number;
 
-    fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp> {
+    fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp<Number>> {
         self.unary_ops.get(symbol)
     }
 
-    fn lookup_binary(&self, symbol: &str) -> Option<&BinaryOp> {
+    fn lookup_binary(&self, symbol: &str) -> Option<&BinaryOp<Number>> {
         self.binary_ops.get(symbol)
     }
-    fn lookup_const(&self, symbol: &str) -> Option<&ConstantOp> {
+    fn lookup_const(&self, symbol: &str) -> Option<&ConstantOp<Number>> {
         self.const_ops.get(symbol)
     }
 
@@ -239,16 +171,16 @@ impl Semantics for OperatorTable<PointStyle> {
         self.const_ops.contains_key(symbol)
     }
 
-    fn number(&self, num: f32) -> Operation<f32> {
-        Operation::Constant(num)
+    fn number(&self, num: f32) -> Operation<Number> {
+        Operation::Constant(Number::from(num))
     }
 
-    fn xvar(&self) -> Operation<f32> {
-        Operation::Variable(|input| input.0)
+    fn xvar(&self) -> Operation<Number> {
+        Operation::Variable(|input| input.x)
     }
 
-    fn yvar(&self) -> Operation<f32> {
-        Operation::Variable(|input| input.1)
+    fn yvar(&self) -> Operation<Number> {
+        Operation::Variable(|input| input.y)
     }
 }
 

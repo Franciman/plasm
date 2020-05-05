@@ -189,7 +189,7 @@ impl Plot {
         for _ in 0..count {
             let mut y = camera.position.1 - camera.size/2.0;
             for _ in 0..count {
-                let z = expression.eval((x, y));
+                let z = expression.eval_3d(x, y);
                 let point = camera.to_normalized_coordinates((x,y,z));
                 positions.push(point.0);
                 positions.push(point.2);
