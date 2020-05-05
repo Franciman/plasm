@@ -6,12 +6,13 @@ mod operator_descr;
 mod parser;
 mod expression;
 mod plot_generator2d;
+mod operator_tables;
 use three_d::*;
 use plotter::Plotter;
 use log::info;
 
-const DEFAULT_EXPR: &str = "sin(x)+sin(y)";
-const DEFAULT_MODE: DrawingMode = DrawingMode::Mode3d;
+const DEFAULT_EXPR: &str = "sin(x)";
+const DEFAULT_MODE: DrawingMode = DrawingMode::Mode2d;
 
 enum DrawingMode {
     Mode2d,
@@ -32,7 +33,7 @@ fn start_main<F: 'static>(get_input: F) where
 
     let mut renderer = DeferredPipeline::new(&gl).unwrap();
 
-    let operator_table = operator_descr::default_operator_table();
+    let operator_table = operator_tables::default_operator_table();
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
     let mut plotter2d = plotter2d::Plotter2d::new(&gl, expression, (screen_width, screen_height));
     let expression = parser::parse(DEFAULT_EXPR, &operator_table).unwrap();
