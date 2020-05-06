@@ -57,7 +57,7 @@ impl plotter::Plotter for Plotter2d {
     }
 
     fn render(&self, gl: &Gl, _renderer: &mut DeferredPipeline) {
-        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.1, 0.1, 0.1, 1.0)), None, &|| {
+        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.0, 0.0, 0.0, 0.1)), None, &|| {
             self.plot.draw(&self.program);
         }).unwrap();
     }
@@ -113,12 +113,12 @@ impl Plot {
         program.add_uniform_mat4("worldViewProjectionMatrix", &Mat4::identity()).unwrap();
 
         program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(1.0, 1.0, 1.0, 1.0)).unwrap();
+        program.add_uniform_vec4("color", &vec4(0.1, 0.1, 0.1, 1.0)).unwrap();
         program.draw_arrays(self.position_buffer_size);
 
         // draw axis
         program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.5, 0.5, 0.5, 1.0)).unwrap();
+        program.add_uniform_vec4("color", &vec4(0.2, 0.2, 0.2, 1.0)).unwrap();
         program.draw_arrays_mode(4, consts::LINES);
     }
 
@@ -142,17 +142,22 @@ impl Plot {
             positions.push(0.0);
         };
 
-        let width = 0.002;
+        let width = 0.004;
 
         for rectangle in rectangles {
-            let order = if rectangle.y1 < rectangle.y2 {1.0} else {-1.0};
-            add_position((rectangle.x1, rectangle.y1), -width*order, -width*order);
-            add_position((rectangle.x2, rectangle.y2), width*order, width*order);
-            add_position((rectangle.x1, rectangle.y2), -width*order, width*order);
+            let mut rectangle = rectangle;
+            if rectangle.y1 > rectangle.y2 {
+                let temp = rectangle.y1;
+                rectangle.y1 = rectangle.y2;
+                rectangle.y2 = temp;
+            }
+            add_position((rectangle.x1, rectangle.y1), -width, -width);
+            add_position((rectangle.x2, rectangle.y2), width, width);
+            add_position((rectangle.x1, rectangle.y2), -width, width);
 
-            add_position((rectangle.x1, rectangle.y1), -width*order, -width*order);
-            add_position((rectangle.x2, rectangle.y2), width*order, width*order);
-            add_position((rectangle.x2, rectangle.y1), width*order, -width*order);
+            add_position((rectangle.x1, rectangle.y1), -width, -width);
+            add_position((rectangle.x2, rectangle.y1), width, -width);
+            add_position((rectangle.x2, rectangle.y2), width, width);
         }
 
         positions
