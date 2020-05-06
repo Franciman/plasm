@@ -114,7 +114,7 @@ impl Plot {
 
         program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
         program.add_uniform_vec4("color", &vec4(1.0, 1.0, 1.0, 1.0)).unwrap();
-        program.draw_arrays_mode(self.position_buffer_size, consts::LINES);
+        program.draw_arrays(self.position_buffer_size);
 
         // draw axis
         program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
@@ -127,21 +127,32 @@ impl Plot {
         let display_info = plot_generator2d::DisplayInfo {
             x_start: (camera.position.0 - camera.size/2.0) as f64,
             x_end: (camera.position.0 + camera.size/2.0) as f64,
+            y_start: (camera.position.1 - camera.size/2.0) as f64,
+            y_end: (camera.position.1 + camera.size/2.0) as f64,
             resolution: resolution
         };
-        let segments = plot_generator2d::generate_2dplot(expression, display_info);
+        let rectangles = plot_generator2d::generate_2dplot(expression, display_info);
 
-        let mut positions: Vec<f32> = Vec::with_capacity(segments.len()*2*3);
-        for segment in segments {
-            let (x_screen, y_screen) = camera.to_normalized_coordinates(segment.start_point);
-            positions.push(x_screen);
-            positions.push(y_screen);
+        let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
+        
+        let mut add_position = |p: (f32, f32), x_offset: f32, y_offset: f32| {
+            let (x_screen, y_screen) = camera.to_normalized_coordinates((p.0, p.1));
+            positions.push(x_screen + x_offset);
+            positions.push(y_screen + y_offset);
             positions.push(0.0);
+        };
 
-            let (x_screen, y_screen) = camera.to_normalized_coordinates(segment.end_point);
-            positions.push(x_screen);
-            positions.push(y_screen);
-            positions.push(0.0);
+        let width = 0.002;
+
+        for rectangle in rectangles {
+            let order = if rectangle.y1 < rectangle.y2 {1.0} else {-1.0};
+            add_position((rectangle.x1, rectangle.y1), -width*order, -width*order);
+            add_position((rectangle.x2, rectangle.y2), width*order, width*order);
+            add_position((rectangle.x1, rectangle.y2), -width*order, width*order);
+
+            add_position((rectangle.x1, rectangle.y1), -width*order, -width*order);
+            add_position((rectangle.x2, rectangle.y2), width*order, width*order);
+            add_position((rectangle.x2, rectangle.y1), width*order, -width*order);
         }
 
         positions
