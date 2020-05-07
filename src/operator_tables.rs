@@ -111,6 +111,18 @@ pub fn interval_arithmetic_operator_table() -> OperatorTable<IntervalSet<f64>> {
             symbol: "-",
             semantics: |x| (-x),
         },
+        UnaryOp {
+            symbol: "sin",
+            semantics: |x| x.sin(),
+        },
+        UnaryOp {
+            symbol: "cos",
+            semantics: |x| x.cos(),
+        },
+        UnaryOp {
+            symbol: "tan",
+            semantics: |x| x.tan(),
+        },
     ];
 
     let binary_ops: Vec<BinaryOp<IntervalSet<f64>>> = vec![

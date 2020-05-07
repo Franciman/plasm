@@ -347,7 +347,7 @@ dependencies = [
 [[package]]
 name = "honestintervals"
 version = "0.2.0"
-source = "git+https://github.com/frankplus/rust-honestintervals#4979f2018304847b3833c02ace561a68c6b4a4cf"
+source = "git+https://github.com/frankplus/rust-honestintervals#5afd5fbd90faecf0e3e7d980e2a4d442775b945d"
 dependencies = [
  "libc",
 ]
