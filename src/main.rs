@@ -71,7 +71,8 @@ fn start_main<F: 'static>(get_input: F) where
                                     info!("Could not parse input function");
                                 }
                             }
-
+                            renderer.geometry_pass(screen_width, screen_height, &|| {
+                            }).unwrap();
                         },
                         DrawingMode::Mode3d => {
                             plotter3d.set_expression(expr);
