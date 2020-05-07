@@ -46,7 +46,7 @@ impl plotter::Plotter for Plotter2d {
     }
 
     fn zoom(&mut self, delta: f32) {
-        self.camera.size *= (1.1 as f32).powf(delta);
+        self.camera.size *= (1.05 as f32).powf(delta);
         self.update_view();
     }
 
@@ -56,8 +56,10 @@ impl plotter::Plotter for Plotter2d {
         self.update_view();
     }
 
-    fn render(&self, gl: &Gl, _renderer: &mut DeferredPipeline) {
-        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.0, 0.0, 0.0, 0.1)), None, &|| {
+    fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline) {
+        renderer.geometry_pass(self.screen_size.0, self.screen_size.1, &|| {
+        }).unwrap();
+        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), None, &|| {
             self.plot.draw(&self.program);
         }).unwrap();
     }
@@ -113,7 +115,7 @@ impl Plot {
         program.add_uniform_mat4("worldViewProjectionMatrix", &Mat4::identity()).unwrap();
 
         program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.1, 0.1, 0.1, 1.0)).unwrap();
+        program.add_uniform_vec4("color", &vec4(0.5, 0.3, 0.1, 1.0)).unwrap();
         program.draw_arrays(self.position_buffer_size);
 
         // draw axis
@@ -142,7 +144,8 @@ impl Plot {
             positions.push(0.0);
         };
 
-        let width = 0.004;
+        let x_width = 0.002;
+        let y_width = 0.005;
 
         for rectangle in rectangles {
             let mut rectangle = rectangle;
@@ -151,13 +154,13 @@ impl Plot {
                 rectangle.y1 = rectangle.y2;
                 rectangle.y2 = temp;
             }
-            add_position((rectangle.x1, rectangle.y1), -width, -width);
-            add_position((rectangle.x2, rectangle.y2), width, width);
-            add_position((rectangle.x1, rectangle.y2), -width, width);
+            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
+            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
+            add_position((rectangle.x1, rectangle.y2), -x_width, y_width);
 
-            add_position((rectangle.x1, rectangle.y1), -width, -width);
-            add_position((rectangle.x2, rectangle.y1), width, -width);
-            add_position((rectangle.x2, rectangle.y2), width, width);
+            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
+            add_position((rectangle.x2, rectangle.y1), x_width, -y_width);
+            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
         }
 
         positions
