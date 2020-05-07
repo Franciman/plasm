@@ -46,7 +46,7 @@ impl plotter::Plotter for Plotter2d {
     }
 
     fn zoom(&mut self, delta: f32) {
-        self.camera.size *= (1.05 as f32).powf(delta);
+        self.camera.size *= (1.03 as f32).powf(delta);
         self.update_view();
     }
 
@@ -56,7 +56,7 @@ impl plotter::Plotter for Plotter2d {
         self.update_view();
     }
 
-    fn render(&self, gl: &Gl, renderer: &mut DeferredPipeline) {
+    fn render(&self, gl: &Gl, _renderer: &mut DeferredPipeline) {
         Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), None, &|| {
             self.plot.draw(&self.program);
         }).unwrap();
