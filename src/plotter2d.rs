@@ -2,18 +2,20 @@ use three_d::*;
 use crate::expression::Expression;
 use three_d::Program;
 use crate::plotter;
+use crate::plotter::Plotter;
 use crate::plot_generator2d;
+use honestintervals::IntervalSet;
 
 pub struct Plotter2d {
     plot: Plot,
     program: Program,
-    expression: Expression<f32>,
+    expression: Expression<IntervalSet<f64>>,
     camera: Camera,
     screen_size: (usize, usize)
 }
 
 impl Plotter2d {
-    pub fn new(gl: &Gl, expression: Expression<f32>, screen_size: (usize, usize)) -> Plotter2d {
+    pub fn new(gl: &Gl, expression: Expression<IntervalSet<f64>>, screen_size: (usize, usize)) -> Plotter2d {
 
         let program = Program::from_source(gl,
             include_str!("../assets/shaders/color.vert"),
@@ -30,6 +32,11 @@ impl Plotter2d {
             screen_size
         }
     }
+
+    pub fn set_expression(&mut self, expression: Expression<IntervalSet<f64>>) {
+        self.expression = expression;
+        self.update_view();
+    }
 }
 
 impl plotter::Plotter for Plotter2d {
@@ -38,13 +45,8 @@ impl plotter::Plotter for Plotter2d {
         self.plot.update_positions(&self.expression, self.screen_size.0 as u32, &self.camera)
     }
 
-    fn set_expression(&mut self, expression: Expression<f32>) {
-        self.expression = expression;
-        self.update_view();
-    }
-
     fn zoom(&mut self, delta: f32) {
-        self.camera.size *= (1.1 as f32).powf(delta);
+        self.camera.size *= (1.03 as f32).powf(delta);
         self.update_view();
     }
 
@@ -55,7 +57,7 @@ impl plotter::Plotter for Plotter2d {
     }
 
     fn render(&self, gl: &Gl, _renderer: &mut DeferredPipeline) {
-        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.1, 0.1, 0.1, 1.0)), None, &|| {
+        Screen::write(gl, 0, 0, self.screen_size.0, self.screen_size.1, Some(&vec4(0.9, 0.9, 0.9, 1.0)), None, &|| {
             self.plot.draw(&self.program);
         }).unwrap();
     }
@@ -83,7 +85,7 @@ struct Plot {
 
 impl Plot {
 
-    fn new(gl: &Gl, expression: &Expression<f32>, resolution: u32, camera: &Camera) -> Plot {
+    fn new(gl: &Gl, expression: &Expression<IntervalSet<f64>>, resolution: u32, camera: &Camera) -> Plot {
         let positions = Plot::generate_positions(expression, resolution, camera);
         let axis_points = Plot::generate_axis_lines(camera);
 
@@ -98,7 +100,7 @@ impl Plot {
         }
     }
 
-    fn update_positions(&mut self, expression: &Expression<f32>, resolution: u32, camera: &Camera) {
+    fn update_positions(&mut self, expression: &Expression<IntervalSet<f64>>, resolution: u32, camera: &Camera) {
         let positions = Plot::generate_positions(expression, resolution, camera);
         let axis_positions = Plot::generate_axis_lines(camera);
         
@@ -111,35 +113,52 @@ impl Plot {
         program.add_uniform_mat4("worldViewProjectionMatrix", &Mat4::identity()).unwrap();
 
         program.use_attribute_vec3_float(&self.position_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(1.0, 1.0, 1.0, 1.0)).unwrap();
-        program.draw_arrays_mode(self.position_buffer_size, consts::LINES);
+        program.add_uniform_vec4("color", &vec4(0.5, 0.3, 0.1, 1.0)).unwrap();
+        program.draw_arrays(self.position_buffer_size);
 
         // draw axis
         program.use_attribute_vec3_float(&self.axis_buffer, "position").unwrap();
-        program.add_uniform_vec4("color", &vec4(0.5, 0.5, 0.5, 1.0)).unwrap();
+        program.add_uniform_vec4("color", &vec4(0.2, 0.2, 0.2, 1.0)).unwrap();
         program.draw_arrays_mode(4, consts::LINES);
     }
 
-    fn generate_positions(expression: &Expression<f32>, resolution: u32, camera: &Camera) -> Vec<f32> {
+    fn generate_positions(expression: &Expression<IntervalSet<f64>>, resolution: u32, camera: &Camera) -> Vec<f32> {
 
         let display_info = plot_generator2d::DisplayInfo {
-            x_start: camera.position.0 - camera.size/2.0,
-            x_end: camera.position.0 + camera.size/2.0,
+            x_start: (camera.position.0 - camera.size/2.0) as f64,
+            x_end: (camera.position.0 + camera.size/2.0) as f64,
+            y_start: (camera.position.1 - camera.size/2.0) as f64,
+            y_end: (camera.position.1 + camera.size/2.0) as f64,
             resolution: resolution
         };
-        let segments = plot_generator2d::generate_2dplot(expression, display_info);
+        let rectangles = plot_generator2d::generate_2dplot(expression, display_info);
 
-        let mut positions: Vec<f32> = Vec::with_capacity(segments.len()*2*3);
-        for segment in segments {
-            let (x_screen, y_screen) = camera.to_normalized_coordinates(segment.start_point);
-            positions.push(x_screen);
-            positions.push(y_screen);
+        let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
+        
+        let mut add_position = |p: (f32, f32), x_offset: f32, y_offset: f32| {
+            let (x_screen, y_screen) = camera.to_normalized_coordinates((p.0, p.1));
+            positions.push(x_screen + x_offset);
+            positions.push(y_screen + y_offset);
             positions.push(0.0);
+        };
 
-            let (x_screen, y_screen) = camera.to_normalized_coordinates(segment.end_point);
-            positions.push(x_screen);
-            positions.push(y_screen);
-            positions.push(0.0);
+        let x_width = 0.002;
+        let y_width = 0.005;
+
+        for rectangle in rectangles {
+            let mut rectangle = rectangle;
+            if rectangle.y1 > rectangle.y2 {
+                let temp = rectangle.y1;
+                rectangle.y1 = rectangle.y2;
+                rectangle.y2 = temp;
+            }
+            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
+            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
+            add_position((rectangle.x1, rectangle.y2), -x_width, y_width);
+
+            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
+            add_position((rectangle.x2, rectangle.y1), x_width, -y_width);
+            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
         }
 
         positions

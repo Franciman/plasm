@@ -15,18 +15,18 @@ pub type Prec = u32;
 // - Unary operators, are written in prefix form
 // - Binary operators, are written in infix form
 // - Constants,
-pub struct UnaryOp<Number: Clone + From<f32>> {
+pub struct UnaryOp<Number: Clone + From<f64>> {
     pub symbol: &'static str,
     pub semantics: fn (Number) -> Number,
 }
 
-impl<Number: Clone + From<f32>> UnaryOp<Number> {
+impl<Number: Clone + From<f64>> UnaryOp<Number> {
     pub fn operation(&self) -> Operation<Number> {
         Operation::UnaryOperation(self.semantics)
     }
 }
 
-pub struct BinaryOp<Number: Clone + From<f32>> {
+pub struct BinaryOp<Number: Clone + From<f64>> {
     pub symbol: &'static str,
     pub assoc: Assoc,
     pub prec: Prec,
@@ -35,27 +35,27 @@ pub struct BinaryOp<Number: Clone + From<f32>> {
 }
 
 
-impl<Number: Clone + From<f32>> BinaryOp<Number> {
+impl<Number: Clone + From<f64>> BinaryOp<Number> {
     pub fn operation(&self) -> Operation<Number> {
         Operation::BinaryOperation(self.semantics)
     }
 }
 
-pub struct ConstantOp<Number: Clone + From<f32>> {
+pub struct ConstantOp<Number: Clone + From<f64>> {
     pub symbol: &'static str,
 
     pub semantics: Number,
 }
 
 
-impl<Number: Clone + From<f32>> ConstantOp<Number> {
+impl<Number: Clone + From<f64>> ConstantOp<Number> {
     pub fn operation(&self) -> Operation<Number> {
         Operation::Constant(self.semantics.clone())
     }
 }
 
 pub trait Semantics {
-    type Number: Clone + From<f32>;
+    type Number: Clone + From<f64>;
 
     fn has_symbol(&self, name: &str) -> bool;
 
@@ -63,7 +63,7 @@ pub trait Semantics {
     fn lookup_unary(&self, name: &str) -> Option<&UnaryOp<Self::Number>>;
     fn lookup_const(&self, name: &str) -> Option<&ConstantOp<Self::Number>>;
 
-    fn number(&self, num: f32) -> Operation<Self::Number>;
+    fn number(&self, num: f64) -> Operation<Self::Number>;
     fn xvar(&self) -> Operation<Self::Number>;
     fn yvar(&self) -> Operation<Self::Number>;
 }

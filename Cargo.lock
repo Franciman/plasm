@@ -345,6 +345,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "honestintervals"
+version = "0.2.0"
+source = "git+https://github.com/frankplus/rust-honestintervals#4979f2018304847b3833c02ace561a68c6b4a4cf"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "image"
 version = "0.22.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -664,6 +672,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "console_log",
+ "honestintervals",
  "log",
  "three-d",
  "wasm-bindgen",

@@ -6,7 +6,7 @@ const RESOLUTION: usize = 50;
 
 pub struct Plotter3d {
     plot: Plot,
-    expression: Expression<f32>,
+    expression: Expression<f64>,
     camera: Camera,
     screen_size: (usize, usize),
     projection: three_d::Camera,
@@ -16,7 +16,7 @@ pub struct Plotter3d {
 }
 
 impl Plotter3d {
-    pub fn new(gl: &Gl, expression: Expression<f32>, screen_size: (usize, usize)) -> Plotter3d {
+    pub fn new(gl: &Gl, expression: Expression<f64>, screen_size: (usize, usize)) -> Plotter3d {
 
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
         let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
@@ -45,17 +45,16 @@ impl Plotter3d {
         self.projection.rotate(delta, 0.0);
     }
 
+    pub fn set_expression(&mut self, expression: Expression<f64>) {
+        self.expression = expression;
+        self.update_view();
+    }
 }
 
 impl Plotter for Plotter3d {
 
     fn update_view(&mut self) {
         self.plot.update_positions(&self.expression, RESOLUTION, &self.camera);
-    }
-
-    fn set_expression(&mut self, expression: Expression<f32>) {
-        self.expression = expression;
-        self.update_view();
     }
 
     fn zoom(&mut self, delta: f32) {
@@ -106,7 +105,7 @@ struct Plot {
 
 impl Plot {
 
-    fn new(gl: &Gl, expression: &Expression<f32>, count: usize, camera: &Camera) -> Plot {
+    fn new(gl: &Gl, expression: &Expression<f64>, count: usize, camera: &Camera) -> Plot {
 
         let positions = Plot::generate_grid_positions(expression, count, camera);
     
@@ -168,7 +167,7 @@ impl Plot {
         }
     }
 
-    fn update_positions(&mut self, expression: &Expression<f32>, count: usize, camera: &Camera) {
+    fn update_positions(&mut self, expression: &Expression<f64>, count: usize, camera: &Camera) {
         let positions = Plot::generate_grid_positions(expression, count, camera);
         self.plot_mesh.update_positions(&positions).unwrap();
         self.plot_mesh.update_normals(&Plot::compute_normals(&self.plot_indices, &positions)).unwrap();
@@ -181,7 +180,7 @@ impl Plot {
         self.grid.render(&transformation, projection);
     }
 
-    fn generate_grid_positions(expression: &Expression<f32>, count: usize, camera: &Camera) ->  Vec<f32> {
+    fn generate_grid_positions(expression: &Expression<f64>, count: usize, camera: &Camera) ->  Vec<f32> {
         // generate grid positions
         let mut positions: Vec<f32> = Vec::with_capacity(count * count * 3);
         let step = camera.size / count as f32;
@@ -189,7 +188,7 @@ impl Plot {
         for _ in 0..count {
             let mut y = camera.position.1 - camera.size/2.0;
             for _ in 0..count {
-                let z = expression.eval_3d(x, y);
+                let z = expression.eval_3d(x as f64, y as f64) as f32;
                 let point = camera.to_normalized_coordinates((x,y,z));
                 positions.push(point.0);
                 positions.push(point.2);

@@ -3,118 +3,18 @@ use std::collections::HashMap;
 use crate::expression::Operation;
 use crate::semantics::*;
 
-pub fn default_operator_table() -> OperatorTable<f32> {
-    let unary_ops: Vec<UnaryOp<f32>> = vec![
-        UnaryOp {
-            symbol: "ln",
-            semantics: |x| x.ln(),
-        },
-        UnaryOp {
-            symbol: "log",
-            semantics: |x| x.log(10.0),
-        },
-        UnaryOp {
-            symbol: "sin",
-            semantics: |x| x.sin(),
-        },
-        UnaryOp {
-            symbol: "cos",
-            semantics: |x| x.cos(),
-        },
-        UnaryOp {
-            symbol: "tan",
-            semantics: |x| x.tan(),
-        },
-        UnaryOp {
-            symbol: "sqrt",
-            semantics: |x| x.sqrt(),
-        },
-        UnaryOp {
-            symbol: "-",
-            semantics: |x| (-x),
-        },
-        UnaryOp {
-            symbol: "sgn",
-            semantics: |x| x.signum(),
-        },
-        UnaryOp {
-            symbol: "abs",
-            semantics: |x| x.abs(),
-        },
-        UnaryOp {
-            symbol: "asin",
-            semantics: |x| x.asin(),
-        },
-        UnaryOp {
-            symbol: "acos",
-            semantics: |x| x.acos(),
-        },
-        UnaryOp {
-            symbol: "atan",
-            semantics: |x| x.atan(),
-        },
-    ];
-
-    let binary_ops: Vec<BinaryOp<f32>> = vec![
-        BinaryOp {
-            symbol: "+",
-            semantics: |x, y| x+y,
-            assoc: Assoc::Left,
-            prec: 1,
-        },
-        BinaryOp {
-            symbol: "-",
-            semantics: |x, y| x-y,
-            assoc: Assoc::Left,
-            prec: 1,
-
-        },
-        BinaryOp {
-            symbol: "*",
-            semantics: |x, y| x*y,
-            assoc: Assoc::Left,
-            prec: 2,
-        },
-        BinaryOp {
-            symbol: "/",
-            semantics: |x, y| x/y,
-            assoc: Assoc::Left,
-            prec: 2,
-        },
-        BinaryOp {
-            symbol: "^",
-            semantics: |x, y| x.powf(y),
-            assoc: Assoc::Left,
-            prec: 3,
-        },
-    ];
-
-    let consts: Vec<ConstantOp<f32>> = vec![
-        ConstantOp {
-            symbol: "pi",
-            semantics: std::f32::consts::PI,
-        },
-        ConstantOp {
-            symbol: "e",
-            semantics: std::f32::consts::E,
-        },
-    ];
-
-    OperatorTable::new(unary_ops, binary_ops, consts)
-}
-
 // Description of an operator supported
 // For now we support three types of operators:
 // - Unary operators, are written in prefix form
 // - Binary operators, are written in infix form
 // - Constants,
-pub struct OperatorTable<Number: Clone + From<f32>> {
+pub struct OperatorTable<Number: Clone + From<f64>> {
     unary_ops: HashMap<&'static str, UnaryOp<Number>>,
     binary_ops: HashMap<&'static str, BinaryOp<Number>>,
     const_ops: HashMap<&'static str, ConstantOp<Number>>,
 }
 
-impl<Number: Clone + From<f32>> OperatorTable<Number> {
+impl<Number: Clone + From<f64>> OperatorTable<Number> {
     // panics if there is any duplicate symbol
     // TODO: Check that constants and unary symbols don't overlap
     pub fn new(unary: Vec<UnaryOp<Number>>, binary: Vec<BinaryOp<Number>>, consts: Vec<ConstantOp<Number>>) -> OperatorTable<Number> {
@@ -151,7 +51,7 @@ impl<Number: Clone + From<f32>> OperatorTable<Number> {
     }
 }
 
-impl<Number: Clone + From<f32>> Semantics for OperatorTable<Number> {
+impl<Number: Clone + From<f64>> Semantics for OperatorTable<Number> {
     type Number = Number;
 
     fn lookup_unary(&self, symbol: &str) -> Option<&UnaryOp<Number>> {
@@ -171,7 +71,7 @@ impl<Number: Clone + From<f32>> Semantics for OperatorTable<Number> {
         self.const_ops.contains_key(symbol)
     }
 
-    fn number(&self, num: f32) -> Operation<Number> {
+    fn number(&self, num: f64) -> Operation<Number> {
         Operation::Constant(Number::from(num))
     }
 

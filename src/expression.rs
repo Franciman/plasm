@@ -6,7 +6,7 @@ pub struct InputSpace<Number: Clone> {
     pub y: Number,
 }
 
-pub enum Operation<Number: Clone + From<f32>> {
+pub enum Operation<Number: Clone + From<f64>> {
     BinaryOperation(fn (Number, Number) -> Number),
     UnaryOperation(fn (Number) -> Number),
     Constant(Number),
@@ -15,14 +15,14 @@ pub enum Operation<Number: Clone + From<f32>> {
 
 // We represent an expression in its postfix form
 // it is a program to be run in a stack machine
-pub struct Expression<Number: Clone + From<f32>> {
+pub struct Expression<Number: Clone + From<f64>> {
     ops: Vec<Operation<Number>>,
     // This flag indicates the need
     // to plot the function in the 3d space
     is_3d: bool,
 }
 
-impl<Number: Clone + From<f32>> Expression<Number> {
+impl<Number: Clone + From<f64>> Expression<Number> {
     pub fn new(ops: Vec<Operation<Number>>, is_3d: bool) -> Expression<Number> {
         Expression {
             ops: ops,
