@@ -124,14 +124,14 @@ impl Plot {
 
     fn generate_positions(expression: &Expression<IntervalSet<f64>>, resolution: u32, camera: &Camera) -> Vec<f32> {
 
-        let display_info = plot_generator2d::DisplayInfo {
+        let display_info = plot_generator2d::Rectangle {
             x_start: (camera.position.0 - camera.size/2.0) as f64,
             x_end: (camera.position.0 + camera.size/2.0) as f64,
             y_start: (camera.position.1 - camera.size/2.0) as f64,
             y_end: (camera.position.1 + camera.size/2.0) as f64,
-            resolution: 5.0 * camera.size as f64 / resolution as f64
         };
-        let rectangles = plot_generator2d::generate_2dplot(expression, display_info);
+        let step = 5.0 * camera.size as f64 / resolution as f64;
+        let rectangles = plot_generator2d::generate_2dplot_implicit(expression, display_info, step);
 
         let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
         
@@ -146,19 +146,13 @@ impl Plot {
         let y_width = 0.005;
 
         for rectangle in rectangles {
-            let mut rectangle = rectangle;
-            if rectangle.y1 > rectangle.y2 {
-                let temp = rectangle.y1;
-                rectangle.y1 = rectangle.y2;
-                rectangle.y2 = temp;
-            }
-            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
-            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
-            add_position((rectangle.x1, rectangle.y2), -x_width, y_width);
+            add_position((rectangle.x_start as f32, rectangle.y_start as f32), -x_width, -y_width);
+            add_position((rectangle.x_end as f32, rectangle.y_end as f32), x_width, y_width);
+            add_position((rectangle.x_start as f32, rectangle.y_end as f32), -x_width, y_width);
 
-            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
-            add_position((rectangle.x2, rectangle.y1), x_width, -y_width);
-            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
+            add_position((rectangle.x_start as f32, rectangle.y_start as f32), -x_width, -y_width);
+            add_position((rectangle.x_end as f32, rectangle.y_start as f32), x_width, -y_width);
+            add_position((rectangle.x_end as f32, rectangle.y_end as f32), x_width, y_width);
         }
 
         positions
