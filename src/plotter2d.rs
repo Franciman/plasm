@@ -129,7 +129,7 @@ impl Plot {
             x_end: (camera.position.0 + camera.size/2.0) as f64,
             y_start: (camera.position.1 - camera.size/2.0) as f64,
             y_end: (camera.position.1 + camera.size/2.0) as f64,
-            resolution: resolution
+            resolution: 5.0 * camera.size as f64 / resolution as f64
         };
         let rectangles = plot_generator2d::generate_2dplot(expression, display_info);
 
