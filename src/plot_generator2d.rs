@@ -14,65 +14,65 @@ pub fn generate_2dplot_implicit(expression: &Expression<IntervalSet<f64>>, displ
     let max_rectangles = resolution*resolution/100;
     let mut queue: VecDeque<Rectangle> = VecDeque::new();
     queue.push_back(display_info);
+
+    let has_zero = |quadrant: &Rectangle| {
+        let x_interval = IntervalSet::new(quadrant.x_start, quadrant.x_end);
+        let y_interval = IntervalSet::new(quadrant.y_start, quadrant.y_end);
+        let eval = expression.eval_3d(x_interval, y_interval);
+        eval.has_zero()
+    };
+
     while let Some(rect) = queue.pop_front() {
         if rect.y_end - rect.y_start < smallest_quadrant || 
             rect.x_end - rect.x_start < smallest_quadrant ||
             queue.len() > max_rectangles as usize {
             break;
         }
-        queue.append(&mut generate_subquadrants(expression, rect));
+
+        let x_half = (rect.x_start + rect.x_end) / 2.0;
+        let y_half = (rect.y_start + rect.y_end) / 2.0;
+
+        let quadrant = Rectangle {
+            x_start: x_half,
+            y_start: y_half,
+            x_end: rect.x_end,
+            y_end: rect.y_end
+        };
+        if has_zero(&quadrant) {
+            queue.push_back(quadrant)
+        }
+    
+        let quadrant = Rectangle {
+            x_start: rect.x_start,
+            y_start: y_half,
+            x_end: x_half,
+            y_end: rect.y_end
+        };
+        if has_zero(&quadrant) {
+            queue.push_back(quadrant)
+        }
+    
+        let quadrant = Rectangle {
+            x_start: rect.x_start,
+            y_start: rect.y_start,
+            x_end: x_half,
+            y_end: y_half
+        };
+        if has_zero(&quadrant) {
+            queue.push_back(quadrant)
+        }
+    
+        let quadrant = Rectangle {
+            x_start: x_half,
+            y_start: rect.y_start,
+            x_end: rect.x_end,
+            y_end: y_half
+        };
+        if has_zero(&quadrant) {
+            queue.push_back(quadrant)
+        }
     }
     queue.into()
-}
-
-fn generate_subquadrants(expression: &Expression<IntervalSet<f64>>, rect: Rectangle) -> VecDeque<Rectangle> {
-    let x_half = (rect.x_start + rect.x_end) / 2.0;
-    let y_half = (rect.y_start + rect.y_end) / 2.0;
-
-    let mut subquadrants = VecDeque::new();
-
-    let mut add_if_has_zero = |quadrant: Rectangle| {
-        let x_interval = IntervalSet::new(quadrant.x_start, quadrant.x_end);
-        let y_interval = IntervalSet::new(quadrant.y_start, quadrant.y_end);
-        let eval = expression.eval_3d(x_interval, y_interval);
-        if eval.has_zero() {
-            subquadrants.push_back(quadrant)
-        }
-    };
-
-    let quadrant = Rectangle {
-        x_start: x_half,
-        y_start: y_half,
-        x_end: rect.x_end,
-        y_end: rect.y_end
-    };
-    add_if_has_zero(quadrant);
-
-    let quadrant = Rectangle {
-        x_start: rect.x_start,
-        y_start: y_half,
-        x_end: x_half,
-        y_end: rect.y_end
-    };
-    add_if_has_zero(quadrant);
-
-    let quadrant = Rectangle {
-        x_start: rect.x_start,
-        y_start: rect.y_start,
-        x_end: x_half,
-        y_end: y_half
-    };
-    add_if_has_zero(quadrant);
-
-    let quadrant = Rectangle {
-        x_start: x_half,
-        y_start: rect.y_start,
-        x_end: rect.x_end,
-        y_end: y_half
-    };
-    add_if_has_zero(quadrant);
-
-    subquadrants
 }
 
 // Given the DisplayInfo, it returns an approximation of the plot
