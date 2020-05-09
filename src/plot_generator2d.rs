@@ -20,25 +20,23 @@ pub fn generate_2dplot_implicit(expression: &Expression<IntervalSet<f64>>, displ
             queue.len() > max_rectangles as usize {
             break;
         }
-        for quadrant in generate_subquadrants(expression, rect) {
-            queue.push_back(quadrant);
-        }
+        queue.append(&mut generate_subquadrants(expression, rect));
     }
     queue.into()
 }
 
-fn generate_subquadrants(expression: &Expression<IntervalSet<f64>>, rect: Rectangle) -> Vec<Rectangle> {
+fn generate_subquadrants(expression: &Expression<IntervalSet<f64>>, rect: Rectangle) -> VecDeque<Rectangle> {
     let x_half = (rect.x_start + rect.x_end) / 2.0;
     let y_half = (rect.y_start + rect.y_end) / 2.0;
 
-    let mut subquadrants = Vec::new();
+    let mut subquadrants = VecDeque::new();
 
     let mut add_if_has_zero = |quadrant: Rectangle| {
         let x_interval = IntervalSet::new(quadrant.x_start, quadrant.x_end);
         let y_interval = IntervalSet::new(quadrant.y_start, quadrant.y_end);
         let eval = expression.eval_3d(x_interval, y_interval);
         if eval.has_zero() {
-            subquadrants.push(quadrant)
+            subquadrants.push_back(quadrant)
         }
     };
 
