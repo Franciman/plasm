@@ -130,8 +130,8 @@ impl Plot {
             y_start: (camera.position.1 - camera.size/2.0) as f64,
             y_end: (camera.position.1 + camera.size/2.0) as f64,
         };
-        let step = 5.0 * camera.size as f64 / resolution as f64;
-        let rectangles = plot_generator2d::generate_2dplot_implicit(expression, display_info, step);
+
+        let rectangles = plot_generator2d::generate_2dplot_implicit(expression, display_info, resolution);
 
         let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
         
@@ -142,8 +142,8 @@ impl Plot {
             positions.push(0.0);
         };
 
-        let x_width = 0.002;
-        let y_width = 0.005;
+        let x_width = 0.003;
+        let y_width = 0.003;
 
         for rectangle in rectangles {
             add_position((rectangle.x_start as f32, rectangle.y_start as f32), -x_width, -y_width);
