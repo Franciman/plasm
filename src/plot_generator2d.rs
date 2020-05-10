@@ -11,7 +11,7 @@ pub struct Rectangle {
 
 pub fn generate_2dplot_implicit(expression: &Expression<IntervalSet<f64>>, display_info: Rectangle, resolution: u32) -> Vec<Rectangle> {
     let smallest_quadrant = (display_info.x_end - display_info.x_start) / resolution as f64;
-    let max_rectangles = resolution*resolution/100;
+    let max_rectangles = 10000;
     let mut queue: VecDeque<Rectangle> = VecDeque::new();
     queue.push_back(display_info);
 

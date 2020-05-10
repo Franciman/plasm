@@ -6,6 +6,8 @@ use crate::plotter::Plotter;
 use crate::plot_generator2d;
 use honestintervals::IntervalSet;
 
+const LINE_WIDTH: f32 = 0.008;
+
 pub struct Plotter2d {
     plot: Plot,
     program: Program,
@@ -138,24 +140,27 @@ impl Plot {
 
         let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
         
-        let mut add_position = |p: (f32, f32), x_offset: f32, y_offset: f32| {
-            let (x_screen, y_screen) = camera.to_normalized_coordinates((p.0, p.1));
-            positions.push(x_screen + x_offset);
-            positions.push(y_screen + y_offset);
+        let mut add_position = |x: f32, y: f32| {
+            positions.push(x);
+            positions.push(y);
             positions.push(0.0);
         };
 
-        let x_width = 0.003;
-        let y_width = 0.003;
-
         for rectangle in rectangles {
-            add_position((rectangle.x_start as f32, rectangle.y_start as f32), -x_width, -y_width);
-            add_position((rectangle.x_end as f32, rectangle.y_end as f32), x_width, y_width);
-            add_position((rectangle.x_start as f32, rectangle.y_end as f32), -x_width, y_width);
 
-            add_position((rectangle.x_start as f32, rectangle.y_start as f32), -x_width, -y_width);
-            add_position((rectangle.x_end as f32, rectangle.y_start as f32), x_width, -y_width);
-            add_position((rectangle.x_end as f32, rectangle.y_end as f32), x_width, y_width);
+            let (x_start, y_start) = camera.to_normalized_coordinates((rectangle.x_start as f32, rectangle.y_start as f32));
+            let (x_end, y_end) = camera.to_normalized_coordinates((rectangle.x_end as f32, rectangle.y_end as f32));
+
+            let x_width = ((LINE_WIDTH - x_end + x_start)/2.0).max(0.0);
+            let y_width = ((LINE_WIDTH - y_end + y_start)/2.0).max(0.0);
+
+            add_position(x_start - x_width, y_start - y_width);
+            add_position(x_end + x_width, y_end + y_width);
+            add_position(x_start - x_width, y_end + y_width);
+
+            add_position(x_start - x_width, y_start - y_width);
+            add_position(x_end + x_width, y_start - y_width);
+            add_position(x_end + x_width, y_end + y_width);
         }
 
         positions
