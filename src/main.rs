@@ -11,7 +11,7 @@ use three_d::*;
 use plotter::Plotter;
 use log::info;
 
-const DEFAULT_EXPR: &str = "1/(x^2 - 2)";
+const DEFAULT_EXPR: &str = "x^2 + y^2 = 1";
 const DEFAULT_MODE: DrawingMode = DrawingMode::Mode2d;
 
 enum DrawingMode {
@@ -56,26 +56,43 @@ fn start_main<F: 'static>(get_input: F) where
             let expression = parser::parse(&input, &operator_table);
             match expression {
                 Ok(expr) => {
-                    drawing_mode = if expr.is_3d() {DrawingMode::Mode3d} else {DrawingMode::Mode2d};
-                    match &drawing_mode {
-                        DrawingMode::Mode2d => {
-
+                    match expr.expr_type() {
+                        expression::ExprType::ExprImplicit => {
                             // draw as 2d function parse again using interval arithmetic
                             let expression = parser::parse(&input, &interval_arithmetic_operator_table);
                             match expression {
                                 Ok(expr) => {
                                     plotter2d.set_expression(expr);
-                                    info!("Draw 2d function");
+                                    info!("Draw implicit function");
                                 }
                                 Err(_) => {
                                     info!("Could not parse input function");
                                 }
                             }
+
+                            drawing_mode = DrawingMode::Mode2d;
                             renderer.geometry_pass(screen_width, screen_height, &|| {
                             }).unwrap();
                         },
-                        DrawingMode::Mode3d => {
+                        expression::ExprType::Expr2d => {
+                            // draw as 2d function parse again using interval arithmetic
+                            let expression = parser::parse(&input, &interval_arithmetic_operator_table);
+                            match expression {
+                                Ok(expr) => {
+                                    plotter2d.set_expression(expr);
+                                    info!("Draw implicit function");
+                                }
+                                Err(_) => {
+                                    info!("Could not parse input function");
+                                }
+                            }
+                            drawing_mode = DrawingMode::Mode2d;
+                            renderer.geometry_pass(screen_width, screen_height, &|| {
+                            }).unwrap();
+                        },
+                        expression::ExprType::Expr3d => {
                             plotter3d.set_expression(expr);
+                            drawing_mode = DrawingMode::Mode3d;
                             info!("Draw 3d function");
                         }
                     }

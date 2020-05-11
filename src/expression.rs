@@ -13,25 +13,30 @@ pub enum Operation<Number: Clone + From<f64>> {
     Variable(fn (InputSpace<Number>) -> Number),
 }
 
+pub enum ExprType {
+    Expr2d,
+    Expr3d,
+    ExprImplicit,
+}
+
 // We represent an expression in its postfix form
 // it is a program to be run in a stack machine
 pub struct Expression<Number: Clone + From<f64>> {
     ops: Vec<Operation<Number>>,
-    // This flag indicates the need
-    // to plot the function in the 3d space
-    is_3d: bool,
+
+    expr_type: ExprType,
 }
 
 impl<Number: Clone + From<f64>> Expression<Number> {
-    pub fn new(ops: Vec<Operation<Number>>, is_3d: bool) -> Expression<Number> {
+    pub fn new(ops: Vec<Operation<Number>>, expr_type: ExprType) -> Expression<Number> {
         Expression {
             ops: ops,
-            is_3d: is_3d,
+            expr_type: expr_type,
         }
     }
 
-    pub fn is_3d(&self) -> bool {
-        self.is_3d
+    pub fn expr_type(&self) -> &ExprType {
+        &self.expr_type
     }
 
     // Evaluate the projection of the expression on the xz plane [ this is what you want for 2d functions]
@@ -44,6 +49,13 @@ impl<Number: Clone + From<f64>> Expression<Number> {
     }
 
     pub fn eval_3d(&self, x: Number, y: Number) -> Number {
+        self.eval(InputSpace {
+            x: x,
+            y: y,
+        })
+    }
+
+    pub fn eval_implicit(&self, x: Number, y: Number) -> Number {
         self.eval(InputSpace {
             x: x,
             y: y,
