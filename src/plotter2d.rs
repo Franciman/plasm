@@ -6,6 +6,8 @@ use crate::plotter::Plotter;
 use crate::plot_generator2d;
 use honestintervals::IntervalSet;
 
+const LINE_WIDTH: f32 = 0.008;
+
 pub struct Plotter2d {
     plot: Plot,
     program: Program,
@@ -21,7 +23,9 @@ impl Plotter2d {
             include_str!("../assets/shaders/color.vert"),
             include_str!("../assets/shaders/color.frag")).unwrap();
                 
-        let camera = Camera {position: (0.0, 0.0), size: 10.0};
+        let start_x_range = 10.0;
+        let camera_size: (f32, f32) = (start_x_range, start_x_range * screen_size.1 as f32 / screen_size.0 as f32);
+        let camera = Camera {position: (0.0, 0.0), size: camera_size };
         let plot = Plot::new(gl, &expression, screen_size.0 as u32, &camera);
 
         Plotter2d {
@@ -46,13 +50,14 @@ impl plotter::Plotter for Plotter2d {
     }
 
     fn zoom(&mut self, delta: f32) {
-        self.camera.size *= (1.03 as f32).powf(delta);
+        self.camera.size.0 *= (1.03 as f32).powf(delta);
+        self.camera.size.1 *= (1.03 as f32).powf(delta);
         self.update_view();
     }
 
     fn translate(&mut self, delta_x: f32, delta_y: f32) {
-        self.camera.position.0 += delta_x * self.camera.size / self.screen_size.0 as f32;
-        self.camera.position.1 += delta_y * self.camera.size / self.screen_size.1 as f32;
+        self.camera.position.0 += delta_x * self.camera.size.0 / self.screen_size.0 as f32;
+        self.camera.position.1 += delta_y * self.camera.size.1 / self.screen_size.1 as f32;
         self.update_view();
     }
 
@@ -65,14 +70,14 @@ impl plotter::Plotter for Plotter2d {
 
 struct Camera {
     position: (f32, f32),
-    size: f32
+    size: (f32, f32)
 }
 
 impl Camera { 
     // project a point to normalized coordinates [-1,1]
     fn to_normalized_coordinates(&self, point: (f32, f32)) -> (f32, f32) {
-        let x_proj = 2.0*(point.0 - self.position.0)/self.size;
-        let y_proj = 2.0*(point.1 - self.position.1)/self.size;
+        let x_proj = 2.0*(point.0 - self.position.0)/self.size.0;
+        let y_proj = 2.0*(point.1 - self.position.1)/self.size.1;
         (x_proj, y_proj)
     }
 }
@@ -124,41 +129,38 @@ impl Plot {
 
     fn generate_positions(expression: &Expression<IntervalSet<f64>>, resolution: u32, camera: &Camera) -> Vec<f32> {
 
-        let display_info = plot_generator2d::DisplayInfo {
-            x_start: (camera.position.0 - camera.size/2.0) as f64,
-            x_end: (camera.position.0 + camera.size/2.0) as f64,
-            y_start: (camera.position.1 - camera.size/2.0) as f64,
-            y_end: (camera.position.1 + camera.size/2.0) as f64,
-            resolution: resolution
+        let display_info = plot_generator2d::Rectangle {
+            x_start: (camera.position.0 - camera.size.0 / 2.0) as f64,
+            x_end: (camera.position.0 + camera.size.0 / 2.0) as f64,
+            y_start: (camera.position.1 - camera.size.1 / 2.0) as f64,
+            y_end: (camera.position.1 + camera.size.1 / 2.0) as f64,
         };
-        let rectangles = plot_generator2d::generate_2dplot(expression, display_info);
+
+        let rectangles = plot_generator2d::generate_2dplot_implicit(expression, display_info, resolution);
 
         let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
         
-        let mut add_position = |p: (f32, f32), x_offset: f32, y_offset: f32| {
-            let (x_screen, y_screen) = camera.to_normalized_coordinates((p.0, p.1));
-            positions.push(x_screen + x_offset);
-            positions.push(y_screen + y_offset);
+        let mut add_position = |x: f32, y: f32| {
+            positions.push(x);
+            positions.push(y);
             positions.push(0.0);
         };
 
-        let x_width = 0.002;
-        let y_width = 0.005;
-
         for rectangle in rectangles {
-            let mut rectangle = rectangle;
-            if rectangle.y1 > rectangle.y2 {
-                let temp = rectangle.y1;
-                rectangle.y1 = rectangle.y2;
-                rectangle.y2 = temp;
-            }
-            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
-            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
-            add_position((rectangle.x1, rectangle.y2), -x_width, y_width);
 
-            add_position((rectangle.x1, rectangle.y1), -x_width, -y_width);
-            add_position((rectangle.x2, rectangle.y1), x_width, -y_width);
-            add_position((rectangle.x2, rectangle.y2), x_width, y_width);
+            let (x_start, y_start) = camera.to_normalized_coordinates((rectangle.x_start as f32, rectangle.y_start as f32));
+            let (x_end, y_end) = camera.to_normalized_coordinates((rectangle.x_end as f32, rectangle.y_end as f32));
+
+            let x_width = ((LINE_WIDTH - x_end + x_start)/2.0).max(0.0);
+            let y_width = ((LINE_WIDTH - y_end + y_start)/2.0).max(0.0);
+
+            add_position(x_start - x_width, y_start - y_width);
+            add_position(x_end + x_width, y_end + y_width);
+            add_position(x_start - x_width, y_end + y_width);
+
+            add_position(x_start - x_width, y_start - y_width);
+            add_position(x_end + x_width, y_start - y_width);
+            add_position(x_end + x_width, y_end + y_width);
         }
 
         positions

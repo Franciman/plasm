@@ -2,7 +2,7 @@ use std::str::Chars;
 use std::iter::Peekable;
 use std::result::Result;
 
-use crate::expression::{Operation, Expression};
+use crate::expression::{Operation, ExprType, Expression};
 use crate::semantics::*;
 
 enum Token {
@@ -12,6 +12,7 @@ enum Token {
     Number(f64),
     LeftParen,
     RightParen,
+    Equal,
     Eof,
     Error(&'static str), // Error with explaination of the error
 }
@@ -120,6 +121,10 @@ impl<'s, S: Semantics> Tokenizer<'s, S> {
                         self.input.next();
                         return Token::RightParen
                     },
+                    '=' => {
+                        self.input.next();
+                        return Token::Equal
+                    },
                     c if c.is_digit(10) => self.read_number(),
                     _ => self.read_identifier(),
 
@@ -158,7 +163,25 @@ pub fn parse<S: Semantics>(input: & str, table: &S) -> Result<Expression<S::Numb
 
     parser.parse_expr(0)?;
     match parser.look_ahead {
-        Token::Eof => Ok(Expression::new(parser.operations, parser.is_3d)),
+        // 'Tis an implicit function
+        Token::Equal => {
+            parser.next_token();
+            // Parse right-hand side
+            parser.parse_expr(0)?;
+
+            // Now we have this equation: lhs = rhs
+            // Plotting it is equivalent to plotting lhs - rhs = 0
+            // So we represent the function in this way and mark it as implicit function
+
+           // We are sure - is a binary operator
+            let op = parser.table.lookup_binary("-").unwrap();
+            parser.operations.push(op.operation());
+            Ok(Expression::new(parser.operations, ExprType::ExprImplicit))
+        }
+        Token::Eof => {
+            let expr_type = if parser.is_3d { ExprType::Expr3d } else { ExprType::Expr2d };
+            Ok(Expression::new(parser.operations, expr_type))
+        },
         _ => Err("Unexpected token at end of expression")
     }
 }
@@ -170,21 +193,22 @@ impl<'s, S: Semantics> Parser<'s, S> {
         loop {
             match &self.look_ahead {
                 Token::Eof => return Ok(()),
+                Token::Equal => return Ok(()),
                 Token::RightParen => return Ok(()),
                 Token::Operator(name) => {
                     let op: &BinaryOp<S::Number>;
-                    let is_implicit: bool;
+                    let is_implicit_product: bool;
                     match self.table.lookup_binary(name) {
                         None => {
                             // If it is not a binary operator it is a prefix starter,
                             // so here there must be an implicit product [or an error which is going to be caught later]
                             // We are sure * is a binary operator
                             op = self.table.lookup_binary("*").unwrap();
-                            is_implicit = true;
+                            is_implicit_product = true;
                         },
                         Some(op_descr) => {
                             op = op_descr;
-                            is_implicit = false;
+                            is_implicit_product = false;
                         }
                     }
                     let curr_op_binds_tighter = curr_prec < op.prec
@@ -192,7 +216,7 @@ impl<'s, S: Semantics> Parser<'s, S> {
                     if curr_op_binds_tighter {
                         // This operator has higher precedence,
                         // so it binds tighter
-                        self.parse_operation_rhs(op, is_implicit)?;
+                        self.parse_operation_rhs(op, is_implicit_product)?;
                         continue; // Keep on looping
                     } else {
                         // We are done, this operator shouldn't be consumed here
