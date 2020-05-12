@@ -1,5 +1,5 @@
 use three_d::*;
-use crate::expression::Expression;
+use crate::expression::{Expression, ExprType};
 use three_d::Program;
 use crate::plotter;
 use crate::plotter::Plotter;
@@ -136,7 +136,11 @@ impl Plot {
             y_end: (camera.position.1 + camera.size.1 / 2.0) as f64,
         };
 
-        let rectangles = plot_generator2d::generate_2dplot_implicit(expression, display_info, resolution);
+        let rectangles = match expression.expr_type() {
+            ExprType::Expr2d => plot_generator2d::generate_2dplot(expression, display_info, resolution),
+            ExprType::ExprImplicit => plot_generator2d::generate_2dplot_implicit(expression, display_info, resolution),
+            ExprType::Expr3d => panic!("expected 2d expression, found 3d expression"),
+        };
 
         let mut positions: Vec<f32> = Vec::with_capacity(rectangles.len()*2*3*3);
         

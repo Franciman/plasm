@@ -57,24 +57,7 @@ fn start_main<F: 'static>(get_input: F) where
             match expression {
                 Ok(expr) => {
                     match expr.expr_type() {
-                        expression::ExprType::ExprImplicit => {
-                            // draw as 2d function parse again using interval arithmetic
-                            let expression = parser::parse(&input, &interval_arithmetic_operator_table);
-                            match expression {
-                                Ok(expr) => {
-                                    plotter2d.set_expression(expr);
-                                    info!("Draw implicit function");
-                                }
-                                Err(_) => {
-                                    info!("Could not parse input function");
-                                }
-                            }
-
-                            drawing_mode = DrawingMode::Mode2d;
-                            renderer.geometry_pass(screen_width, screen_height, &|| {
-                            }).unwrap();
-                        },
-                        expression::ExprType::Expr2d => {
+                        expression::ExprType::Expr2d | expression::ExprType::ExprImplicit => {
                             // draw as 2d function parse again using interval arithmetic
                             let expression = parser::parse(&input, &interval_arithmetic_operator_table);
                             match expression {
