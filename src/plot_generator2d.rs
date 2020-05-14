@@ -18,7 +18,7 @@ pub fn generate_2dplot_implicit(expression: &Expression<IntervalSet<f64>>, displ
     let has_zero = |quadrant: &Rectangle| {
         let x_interval = IntervalSet::new(quadrant.x_start, quadrant.x_end);
         let y_interval = IntervalSet::new(quadrant.y_start, quadrant.y_end);
-        let eval = expression.eval_3d(x_interval, y_interval);
+        let eval = expression.eval_implicit(x_interval, y_interval);
         eval.has_zero()
     };
 

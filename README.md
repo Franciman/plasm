@@ -27,7 +27,7 @@ Go to http://localhost:8080 in a browser.
 
 
 ## Current feature
-2D and 3D mathematical functions plotter.
+2D (implicit and explicit) and 3D mathematical functions plotter.
 
 ## API
 Make a GET request to `https://plasm.acqua.team/` with a GET parameter `"q"` containing the mathematical expression \
@@ -35,9 +35,6 @@ For example:
 ```
 https://plasm.acqua.team/?q=sin%28x%29%2Bcos%28y%29
 ```
-
-## TODO:
-- Implicit functions
 
 ## License
 

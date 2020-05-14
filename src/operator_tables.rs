@@ -38,6 +38,10 @@ pub fn default_operator_table() -> OperatorTable<f64> {
             semantics: |x| x.signum(),
         },
         UnaryOp {
+            symbol: "sign",
+            semantics: |x| x.signum(),
+        },
+        UnaryOp {
             symbol: "abs",
             semantics: |x| x.abs(),
         },
@@ -122,6 +126,26 @@ pub fn interval_arithmetic_operator_table() -> OperatorTable<IntervalSet<f64>> {
         UnaryOp {
             symbol: "tan",
             semantics: |x| x.tan(),
+        },
+        UnaryOp {
+            symbol: "exp",
+            semantics: |x| x.exp(),
+        },
+        UnaryOp {
+            symbol: "sqrt",
+            semantics: |x| x.sqrt(),
+        },
+        UnaryOp {
+            symbol: "abs",
+            semantics: |x| x.abs(),
+        },
+        UnaryOp {
+            symbol: "sign",
+            semantics: |x| x.signum(),
+        },
+        UnaryOp {
+            symbol: "sgn",
+            semantics: |x| x.signum(),
         },
     ];
 
