@@ -11,8 +11,8 @@ use three_d::*;
 use plotter::Plotter;
 use log::info;
 
-const DEFAULT_EXPR: &str = "x^2 + y^2 = 1";
-const DEFAULT_MODE: DrawingMode = DrawingMode::Mode2d;
+const DEFAULT_EXPR: &str = "sin(x)";
+const DEFAULT_MODE: DrawingMode = DrawingMode::Mode3d;
 
 enum DrawingMode {
     Mode2d,

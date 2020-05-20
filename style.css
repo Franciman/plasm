@@ -11,9 +11,10 @@ body {
     border-radius: 25px;
     border: 2px solid #609;
     padding: 20px; 
-    width: 200px;
-    height: 15px;
-    font-size: medium;    
+    width: 300px;
+    height: 50px;
+    font-size: large;
+    text-align: center;   
 }
 
 .canvas_div {

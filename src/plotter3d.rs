@@ -19,11 +19,11 @@ impl Plotter3d {
     pub fn new(gl: &Gl, expression: Expression<f64>, screen_size: (usize, usize)) -> Plotter3d {
 
         let camera = Camera {position: (0.0, 0.0, 0.0), size: 10.0};
-        let projection = three_d::Camera::new_perspective(gl, vec3(1.5, 1.5, 1.5), vec3(0.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0),
+        let projection = three_d::Camera::new_perspective(gl, vec3(1.0, 1.0, 1.0), vec3(0.0, -0.3, 0.0), vec3(0.0, 1.0, 0.0),
                                                         degrees(45.0), screen_size.0 as f32/screen_size.1 as f32, 0.1, 10.0);
 
         let ambient_light = AmbientLight::new(&gl, 0.7, &vec3(1.0, 1.0, 1.0)).unwrap();
-        let directional_light = DirectionalLight::new(&gl, 0.7, &vec3(0.5, 1.0, 1.0), &vec3(3.0, 0.0, 3.0)).unwrap();
+        let directional_light = DirectionalLight::new(&gl, 0.8, &vec3(0.5, 1.0, 1.0), &vec3(1.0, -1.0, 1.0)).unwrap();
         let plot = Plot::new(gl, &expression, RESOLUTION, &camera);
         let axis = Axis::new(gl);
 
@@ -134,8 +134,8 @@ impl Plot {
 
         let cpu_mesh = CPUMesh::new_with_computed_normals(&plot_indices, &positions).unwrap();
         let mut plot_mesh = cpu_mesh.to_mesh(gl).unwrap();
-        plot_mesh.diffuse_intensity = 0.2;
-        plot_mesh.specular_intensity = 0.4;
+        plot_mesh.diffuse_intensity = 0.5;
+        plot_mesh.specular_intensity = 0.2;
         plot_mesh.specular_power = 20.0;
         plot_mesh.color = vec3(0.6, 1.0, 0.6);
 
@@ -247,7 +247,7 @@ impl Axis {
                             0.0, 0.0, 1.0];
 
         let indices = vec![2,3,3,4,5,5,0,1,1];
-        let mut axis = Edges::new(gl, &indices, &positions, 0.007);
+        let mut axis = Edges::new(gl, &indices, &positions, 0.005);
         axis.color = vec3(0.6, 0.6, 0.6);
 
         Axis {
