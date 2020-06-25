@@ -36,6 +36,11 @@ For example:
 https://plasm.acqua.team/?q=sin%28x%29%2Bcos%28y%29
 ```
 
+![screenshot of a plotted 3d function]( screenshots/3dplasm_1.gif )
+
+![screenshot of a plotted implicit 2d function]( screenshots/2d_implicit_screenshot.jpg )
+
+
 ## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
@@ -52,6 +57,3 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 * @Franciman
 * @Frankplus
-
-
-![alt text]( screenshots/3dplasm_1.gif )
