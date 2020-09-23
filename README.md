@@ -1,9 +1,9 @@
 # plasm
 A FAST mathematical function plotter which builds to both desktop (Rust + OpenGL) and web (Rust to WebAssembly).
 
-[**homepage**](https://plasm.acqua.team/)
+[**homepage**](https://frankplus.github.io/plasm/)
 
-[![plasm.acqua.team](screenshots/3dplasm.gif)](https://plasm.acqua.team/)
+[![https://frankplus.github.io/plasm/](screenshots/3dplasm.gif)](https://frankplus.github.io/plasm/)
 
 ## Build
 ### Desktop
@@ -30,10 +30,10 @@ Go to http://localhost:8080 in a browser.
 2D (implicit and explicit) and 3D mathematical functions plotter.
 
 ## API
-Make a GET request to `https://plasm.acqua.team/` with a GET parameter `"q"` containing the mathematical expression \
+Make a GET request to `https://frankplus.github.io/plasm/` with a GET parameter `"q"` containing the mathematical expression \
 For example:
 ```
-https://plasm.acqua.team/?q=sin%28x%29%2Bcos%28y%29
+https://frankplus.github.io/plasm/?q=sin%28x%29%2Bcos%28y%29
 ```
 
 ![screenshot of a plotted 3d function]( screenshots/3dplasm_1.gif )
